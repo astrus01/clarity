@@ -1,4 +1,4 @@
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 
 // Handles agent requests: location detection, Anthropic Haiku for others
@@ -52,11 +52,10 @@ export async function handleAgentRequest(
 
   // Non-location queries: use Anthropic Claude Haiku (lowest cost) for direct text answers
   try {
-    const result = await anthropic.generateText({
-      model: "claude-3-5-haiku-20241022",
+    const result = await generateText({
+      model: anthropic('claude-3-5-haiku-20241022') as any,
       prompt: query,
-      system:
-        "You are Clarity, an AI assistant. Provide concise, helpful answers.",
+      system: "You are Clarity, an AI assistant. Provide concise, helpful answers.",
     });
 
     return createUIMessageStreamResponse({
