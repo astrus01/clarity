@@ -2,18 +2,18 @@
 
 **A Living Dashboard for Your Digital World**
 
-**Cut through the noise. See what matters. Act instantly.**
+Cut through the noise. See what matters. Act instantly.
 
-Clarity is an AI-powered mission control dashboard that gives users total command of their digital life — emails, calendar, news, research, and web actions — all from a single, stunningly designed interface. Powered by Claude (Anthropic), Clarity proactively surfaces what matters, executes multi-step tasks autonomously, and renders rich interactive UI components in response to any request.
+Clarity is an AI-powered mission control dashboard that gives users total command of their digital life, including emails, calendar, news, research, and web actions, all from a single, stunningly designed interface. Powered by Claude (Anthropic), Clarity proactively surfaces what matters, executes multi-step tasks autonomously, and renders rich interactive UI components in response to any request.
 
 ---
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- pnpm or npm
+- npm
 
 ### Installation
 
@@ -33,11 +33,11 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000 in your browser.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 clarity/
@@ -78,7 +78,7 @@ clarity/
 
 ---
 
-## 🤖 Architecture
+## Architecture
 
 Clarity uses a **LangGraph**-based autonomous agent powered by **Claude**.
 
@@ -98,7 +98,7 @@ User Command → API /agent → LangGraph (Planner → Executor → UI Generator
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 See `.env.local.example` for the full list. Key variables:
 
@@ -109,9 +109,9 @@ See `.env.local.example` for the full list. Key variables:
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: Next.js 15 (App Router), React 19
+- **Framework**: Next.js 16 (App Router), React 19
 - **AI**: Anthropic Claude via `@ai-sdk/anthropic`
 - **Orchestration**: LangGraph (`@langchain/langgraph`)
 - **UI**: Tailwind CSS v4, Shadcn UI, Recharts
@@ -122,40 +122,40 @@ See `.env.local.example` for the full list. Key variables:
 
 ---
 
-## 🎨 Design System
+## Design System
 
-- **Theme**: Dark-first ("Refined Dark Intelligence")
+- **Theme**: Dark-first (Refined Dark Intelligence)
 - **Colors**: Near-black background (#0a0a0f), Electric blue primary (#3b82f6), Amber alerts (#f59e0b), Emerald positive (#10b981)
 - **Typography**: DM Sans / Sora for headlines; JetBrains Mono for agent logs
 - **Layout**: 3-column Mission Control dashboard
 
 ---
 
-## 🏃 5-Hour Hackathon Plan
+## 5-Hour Hackathon Plan
 
 See `clarity-prd.md` for full PRD. Quick plan:
 
-1. **Hour 0–0:30**: Kickoff, setup, environment
-2. **Hour 0:30–1:30**: Core infra (LangGraph graph, design system)
-3. **Hour 1:30–2:30**: Features parallel (tools, dashboard panels)
-4. **Hour 2:30–3:30**: Integration (command bar, voice, agent log)
-5. **Hour 3:30–4:30**: Polish & demo prep
-6. **Hour 4:30–5:00**: Buffer & final rehearsal
+1. Hour 0–0:30: Kickoff, setup, environment
+2. Hour 0:30–1:30: Core infra (LangGraph graph, design system)
+3. Hour 1:30–2:30: Features parallel (tools, dashboard panels)
+4. Hour 2:30–3:30: Integration (command bar, voice, agent log)
+5. Hour 3:30–4:30: Polish & demo prep
+6. Hour 4:30–5:00: Buffer & final rehearsal
 
 ---
 
-## 📋 Minimum Viable Demo (Crunch Time)
+## Minimum Viable Demo (Crunch Time)
 
 If behind schedule, ensure:
 
 1. Mission Control dashboard with static panels
 2. One working command (email draft or news brief)
 3. Voice input button (browser Web Speech API)
-4. Beautiful UI — non-negotiable for NBC demo
+4. Beautiful UI - non-negotiable for NBC demo
 
 ---
 
-## 🚀 Future Roadmap
+## Future Roadmap
 
 - Clarity for Teams
 - Slack & Notion integration
