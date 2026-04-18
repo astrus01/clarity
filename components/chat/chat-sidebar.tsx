@@ -144,19 +144,6 @@ function SessionRow({
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirming) {
-      onDelete();
-    } else {
-      setConfirming(true);
-      // reset if user doesn't confirm within 2.5s
-      window.setTimeout(() => setConfirming(false), 2500);
-    }
-  };
-
   return (
     <div
       className={cn(
@@ -184,16 +171,13 @@ function SessionRow({
         </div>
       </button>
       <button
-        onClick={handleDelete}
-        onMouseLeave={() => setConfirming(false)}
-        aria-label={confirming ? "Click again to confirm delete" : "Delete chat"}
-        title={confirming ? "Click again to confirm" : "Delete chat"}
-        className={cn(
-          "absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md flex items-center justify-center transition-all",
-          confirming
-            ? "bg-red-500/15 text-red-400 opacity-100"
-            : "opacity-0 group-hover:opacity-100 text-foreground-muted hover:bg-background/60 hover:text-foreground",
-        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        aria-label="Delete chat"
+        title="Delete chat"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 text-foreground-muted hover:bg-red-500/15 hover:text-red-400 transition-all"
       >
         <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
       </button>
