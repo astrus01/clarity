@@ -21,15 +21,17 @@ import { useChatStore } from "@/lib/chat/store";
 import { useClarityChat } from "@/lib/hooks/use-chat";
 import { cn } from "@/lib/utils";
 
-const PANEL_MAP: Record<PanelKind, React.ComponentType> = {
-  "news-brief": NewsBriefPanel,
-  "email-draft": EmailDraftPanel,
-  "comparison-table": ComparisonTablePanel,
-  calendar: CalendarPanel,
-  globe: GlobePanel,
-  "stock-watch": StockWatchPanel,
-  "weather-brief": WeatherBriefPanel,
-  "timeline-plan": TimelinePlanPanel,
+type PanelComponent = React.ComponentType<{ data?: unknown }>;
+
+const PANEL_MAP: Record<PanelKind, PanelComponent> = {
+  "news-brief": NewsBriefPanel as PanelComponent,
+  "email-draft": EmailDraftPanel as PanelComponent,
+  "comparison-table": ComparisonTablePanel as PanelComponent,
+  calendar: CalendarPanel as PanelComponent,
+  globe: GlobePanel as PanelComponent,
+  "stock-watch": StockWatchPanel as PanelComponent,
+  "weather-brief": WeatherBriefPanel as PanelComponent,
+  "timeline-plan": TimelinePlanPanel as PanelComponent,
 };
 
 const SUGGESTED = [
@@ -43,7 +45,6 @@ const SUGGESTED = [
 export default function Page() {
   const [view, setView] = useState<"home" | "chat">("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [listening, setListening] = useState(false);
 
   const sessions = useChatStore((s) => s.sessions);
   const activeId = useChatStore((s) => s.activeId);
@@ -86,19 +87,13 @@ export default function Page() {
 
       <main className="flex-1 min-w-0 flex flex-col">
         {view === "home" ? (
-          <HomeView
-            onPrompt={handlePromptFromHome}
-            listening={listening}
-            onToggleMic={() => setListening((v) => !v)}
-          />
+          <HomeView onPrompt={handlePromptFromHome} />
         ) : (
           <ChatView
             key={activeSession.id}
             session={activeSession}
             pending={pending}
             onSubmit={send}
-            listening={listening}
-            onToggleMic={() => setListening((v) => !v)}
           />
         )}
       </main>
@@ -110,15 +105,7 @@ export default function Page() {
 // Home / empty state
 // ============================================================================
 
-function HomeView({
-  onPrompt,
-  listening,
-  onToggleMic,
-}: {
-  onPrompt: (p: string) => void;
-  listening: boolean;
-  onToggleMic: () => void;
-}) {
+function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
   return (
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between px-8 py-5 border-b border-border/60">
@@ -175,11 +162,7 @@ function HomeView({
           </div>
 
           <div className="w-full max-w-[38rem] mt-2">
-            <InputBar
-              listening={listening}
-              onToggleMic={onToggleMic}
-              onSubmit={onPrompt}
-            />
+            <InputBar onSubmit={onPrompt} />
             <div
               className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-foreground-muted mt-3 text-center"
               style={{ letterSpacing: "0.14em" }}
@@ -201,14 +184,10 @@ function ChatView({
   session,
   pending,
   onSubmit,
-  listening,
-  onToggleMic,
 }: {
   session: ChatSession;
   pending: boolean;
   onSubmit: (prompt: string) => Promise<void>;
-  listening: boolean;
-  onToggleMic: () => void;
 }) {
   const [activeExchange, setActiveExchange] = useState(0);
   const exchangeRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -325,8 +304,6 @@ function ChatView({
       <div className="sticky bottom-0 z-20 bg-background border-t border-border/60 pt-5">
         <div className="px-8 lg:px-12 pb-6 max-w-[56rem] mx-auto">
           <InputBar
-            listening={listening}
-            onToggleMic={onToggleMic}
             placeholder={
               isEmpty
                 ? "Ask Clarity anything…"
@@ -421,10 +398,10 @@ function ExchangeBlock({ index, exchange }: { index: number; exchange: Exchange 
         </div>
       )}
 
-      {/* Panel (seed sessions) */}
+      {/* Panel (seed sessions or live render_panel emissions) */}
       {Panel && (
         <div className="mt-2 opacity-0 translate-y-2 animate-[panel-in_420ms_cubic-bezier(0.25,0.1,0.25,1)_120ms_forwards]">
-          <Panel />
+          <Panel data={exchange.panelData} />
         </div>
       )}
     </section>

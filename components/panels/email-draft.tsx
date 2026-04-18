@@ -5,6 +5,25 @@ import { PanelFrame } from "@/components/chat/panel-frame";
 import { Send, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type EmailDraftData = {
+  from: string;
+  subject: string;
+  thread?: string;
+  draft: string;
+};
+
+const DEFAULT_DATA: EmailDraftData = {
+  from: "Sarah Chen <sarah@example.com>",
+  subject: "Re: Q3 brief — revised timeline",
+  draft: `Hi Sarah,
+
+Apologies for the delay on the Q3 brief — I know you were counting on it by Friday. I've reviewed the outstanding items and I'll have a revised version in your inbox by end of day Monday, with the three sections you flagged rewritten.
+
+Happy to hop on a quick call in the morning if that's easier.
+
+— T`,
+};
+
 const tones = [
   { value: "warm", label: "Warm" },
   { value: "formal", label: "Formal" },
@@ -12,26 +31,21 @@ const tones = [
   { value: "apologetic", label: "Apologetic" },
 ];
 
-const initialBody = `Hi Sarah,
-
-Apologies for the delay on the Q3 brief — I know you were counting on it by Friday. I've reviewed the outstanding items and I'll have a revised version in your inbox by end of day Monday, with the three sections you flagged rewritten.
-
-Happy to hop on a quick call in the morning if that's easier.
-
-— T`;
-
-export function EmailDraftPanel() {
+export function EmailDraftPanel({ data }: { data?: EmailDraftData }) {
+  const d = data ?? DEFAULT_DATA;
   const [tone, setTone] = useState("warm");
-  const [subject, setSubject] = useState("Re: Q3 brief — revised timeline");
-  const [body, setBody] = useState(initialBody);
+  const [subject, setSubject] = useState(d.subject);
+  const [body, setBody] = useState(d.draft);
+
+  const wordCount = body.trim().split(/\s+/).filter(Boolean).length;
 
   return (
     <PanelFrame
-      eyebrow="Email draft · reply to Sarah Chen"
+      eyebrow={`Email draft · reply to ${d.from.split("<")[0].trim()}`}
       title="Draft ready to send"
       meta={
         <div className="font-mono text-[0.7rem] text-foreground-muted">
-          158 words
+          {wordCount} words
         </div>
       }
     >
@@ -40,12 +54,7 @@ export function EmailDraftPanel() {
           <span className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-foreground-muted">
             To
           </span>
-          <span className="text-foreground">
-            Sarah Chen{" "}
-            <span className="text-foreground-muted">
-              &lt;sarah@example.com&gt;
-            </span>
-          </span>
+          <span className="text-foreground">{d.from}</span>
 
           <span className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-foreground-muted">
             Subject
@@ -57,10 +66,19 @@ export function EmailDraftPanel() {
           />
         </div>
 
+        {d.thread && (
+          <div className="rounded-md border border-border/60 bg-surface/60 px-4 py-3 text-[0.85rem] text-foreground-muted leading-relaxed whitespace-pre-wrap">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.1em] mb-1.5">
+              Thread
+            </div>
+            {d.thread}
+          </div>
+        )}
+
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={9}
+          rows={Math.max(9, Math.min(18, body.split("\n").length + 2))}
           className="w-full resize-none rounded-md border border-border bg-background/40 px-4 py-3 text-foreground leading-[1.7] text-[0.95rem] focus:outline-none focus:border-primary transition-colors"
           style={{ fontFamily: "var(--font-sans)" }}
         />

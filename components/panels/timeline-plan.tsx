@@ -3,145 +3,104 @@
 import { PanelFrame, PanelFooter } from "@/components/chat/panel-frame";
 import { Clock, MapPin } from "lucide-react";
 
-type Stop = {
+export type TimelineStop = {
   time: string;
-  name: string;
-  neighborhood: string;
-  note: string;
-  duration: string;
+  title: string;
+  note?: string;
+  duration?: string;
+  neighborhood?: string;
 };
 
-type Day = {
+export type TimelineDay = {
   label: string;
-  date: string;
   theme: string;
-  stops: Stop[];
+  date?: string;
+  stops: TimelineStop[];
 };
 
-const ITINERARY: Day[] = [
-  {
-    label: "Day 1",
-    date: "Sun · Apr 26",
-    theme: "Metabolism & mega-structures",
-    stops: [
-      {
-        time: "09:30",
-        name: "Nakagin Capsule Tower site",
-        neighborhood: "Shimbashi",
-        note: "Demolished but heritage plaque + context",
-        duration: "45m",
-      },
-      {
-        time: "11:00",
-        name: "Shizuoka Press & Broadcasting Tower",
-        neighborhood: "Ginza",
-        note: "Kenzo Tange · 1967",
-        duration: "1h",
-      },
-      {
-        time: "14:00",
-        name: "St. Mary's Cathedral",
-        neighborhood: "Bunkyo",
-        note: "Tange · stainless steel hyperbolic paraboloid",
-        duration: "1h 30m",
-      },
-    ],
-  },
-  {
-    label: "Day 2",
-    date: "Mon · Apr 27",
-    theme: "Contemporary — Ando & Ito",
-    stops: [
-      {
-        time: "10:00",
-        name: "21_21 Design Sight",
-        neighborhood: "Roppongi",
-        note: "Tadao Ando · buried concrete prism",
-        duration: "2h",
-      },
-      {
-        time: "13:30",
-        name: "Tod's Omotesando",
-        neighborhood: "Aoyama",
-        note: "Toyo Ito · tree-pattern concrete façade",
-        duration: "45m",
-      },
-      {
-        time: "15:00",
-        name: "Prada Aoyama",
-        neighborhood: "Aoyama",
-        note: "Herzog & de Meuron · diamond glass crystal",
-        duration: "1h",
-      },
-    ],
-  },
-  {
-    label: "Day 3",
-    date: "Tue · Apr 28",
-    theme: "Public & civic",
-    stops: [
-      {
-        time: "09:00",
-        name: "Tokyo International Forum",
-        neighborhood: "Yurakucho",
-        note: "Rafael Viñoly · glass hall spine",
-        duration: "1h 30m",
-      },
-      {
-        time: "12:00",
-        name: "National Art Center",
-        neighborhood: "Roppongi",
-        note: "Kisho Kurokawa · undulating glass",
-        duration: "2h",
-      },
-      {
-        time: "15:00",
-        name: "Tokyo Midtown",
-        neighborhood: "Roppongi",
-        note: "SOM + Sakakura · tower complex",
-        duration: "1h 15m",
-      },
-    ],
-  },
-  {
-    label: "Day 4",
-    date: "Wed · Apr 29",
-    theme: "Residential & craft",
-    stops: [
-      {
-        time: "10:00",
-        name: "Reversible Destiny Lofts",
-        neighborhood: "Mitaka",
-        note: "Arakawa + Gins · experimental housing",
-        duration: "1h 30m",
-      },
-      {
-        time: "13:00",
-        name: "Moriyama House (exterior only)",
-        neighborhood: "Ota",
-        note: "SANAA · dispersed white boxes",
-        duration: "45m",
-      },
-      {
-        time: "15:30",
-        name: "Sumida Hokusai Museum",
-        neighborhood: "Sumida",
-        note: "SANAA · faceted aluminum",
-        duration: "1h 15m",
-      },
-    ],
-  },
-];
+export type TimelinePlanData = {
+  title?: string;
+  eyebrow?: string;
+  days: TimelineDay[];
+};
 
-export function TimelinePlanPanel() {
+const DEFAULT_DATA: TimelinePlanData = {
+  title: "Tokyo, for architects",
+  eyebrow: "Itinerary · 4 days",
+  days: [
+    {
+      label: "Day 1",
+      date: "Sun · Apr 26",
+      theme: "Metabolism & mega-structures",
+      stops: [
+        {
+          time: "09:30",
+          title: "Nakagin Capsule Tower site",
+          neighborhood: "Shimbashi",
+          note: "Demolished but heritage plaque + context",
+          duration: "45m",
+        },
+        {
+          time: "11:00",
+          title: "Shizuoka Press & Broadcasting Tower",
+          neighborhood: "Ginza",
+          note: "Kenzo Tange · 1967",
+          duration: "1h",
+        },
+        {
+          time: "14:00",
+          title: "St. Mary's Cathedral",
+          neighborhood: "Bunkyo",
+          note: "Tange · stainless steel hyperbolic paraboloid",
+          duration: "1h 30m",
+        },
+      ],
+    },
+    {
+      label: "Day 2",
+      date: "Mon · Apr 27",
+      theme: "Contemporary — Ando & Ito",
+      stops: [
+        { time: "10:00", title: "21_21 Design Sight", neighborhood: "Roppongi", note: "Tadao Ando · buried concrete prism", duration: "2h" },
+        { time: "13:30", title: "Tod's Omotesando", neighborhood: "Aoyama", note: "Toyo Ito · tree-pattern concrete façade", duration: "45m" },
+        { time: "15:00", title: "Prada Aoyama", neighborhood: "Aoyama", note: "Herzog & de Meuron · diamond glass crystal", duration: "1h" },
+      ],
+    },
+    {
+      label: "Day 3",
+      date: "Tue · Apr 28",
+      theme: "Public & civic",
+      stops: [
+        { time: "09:00", title: "Tokyo International Forum", neighborhood: "Yurakucho", note: "Rafael Viñoly · glass hall spine", duration: "1h 30m" },
+        { time: "12:00", title: "National Art Center", neighborhood: "Roppongi", note: "Kisho Kurokawa · undulating glass", duration: "2h" },
+        { time: "15:00", title: "Tokyo Midtown", neighborhood: "Roppongi", note: "SOM + Sakakura · tower complex", duration: "1h 15m" },
+      ],
+    },
+    {
+      label: "Day 4",
+      date: "Wed · Apr 29",
+      theme: "Residential & craft",
+      stops: [
+        { time: "10:00", title: "Reversible Destiny Lofts", neighborhood: "Mitaka", note: "Arakawa + Gins · experimental housing", duration: "1h 30m" },
+        { time: "13:00", title: "Moriyama House (exterior only)", neighborhood: "Ota", note: "SANAA · dispersed white boxes", duration: "45m" },
+        { time: "15:30", title: "Sumida Hokusai Museum", neighborhood: "Sumida", note: "SANAA · faceted aluminum", duration: "1h 15m" },
+      ],
+    },
+  ],
+};
+
+export function TimelinePlanPanel({ data }: { data?: TimelinePlanData }) {
+  const d = data ?? DEFAULT_DATA;
+  const days = d.days?.length ? d.days : DEFAULT_DATA.days;
+
   return (
     <PanelFrame
-      eyebrow="Itinerary · 4 days"
-      title="Tokyo, for architects"
+      eyebrow={d.eyebrow ?? `Itinerary · ${days.length} day${days.length === 1 ? "" : "s"}`}
+      title={d.title ?? "Plan"}
     >
       <div className="flex flex-col gap-10">
-        {ITINERARY.map((day, di) => (
-          <DaySection key={day.label} day={day} index={di} />
+        {days.map((day, di) => (
+          <DaySection key={`${day.label}-${di}`} day={day} index={di} />
         ))}
 
         <PanelFooter>
@@ -151,16 +110,13 @@ export function TimelinePlanPanel() {
           <button className="text-xs px-3 py-1.5 rounded-full border border-border text-foreground-muted hover:text-foreground hover:border-[color:var(--primary)]/60 transition-all">
             Export as PDF
           </button>
-          <button className="text-xs px-3 py-1.5 rounded-full border border-border text-foreground-muted hover:text-foreground hover:border-[color:var(--primary)]/60 transition-all">
-            Swap in food stops
-          </button>
         </PanelFooter>
       </div>
     </PanelFrame>
   );
 }
 
-function DaySection({ day, index }: { day: Day; index: number }) {
+function DaySection({ day, index }: { day: TimelineDay; index: number }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-baseline gap-4 flex-wrap">
@@ -173,9 +129,11 @@ function DaySection({ day, index }: { day: Day; index: number }) {
         <h4 className="font-serif text-[1.3rem] leading-tight text-foreground m-0">
           {day.theme}
         </h4>
-        <span className="ml-auto text-xs text-foreground-muted tabular-nums">
-          {day.date}
-        </span>
+        {day.date && (
+          <span className="ml-auto text-xs text-foreground-muted tabular-nums">
+            {day.date}
+          </span>
+        )}
       </div>
 
       <ol className="relative flex flex-col gap-0 pl-6 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
@@ -193,20 +151,26 @@ function DaySection({ day, index }: { day: Day; index: number }) {
               <div className="font-mono text-[0.8rem] tabular-nums text-foreground">
                 {stop.time}
               </div>
-              <div className="flex items-center gap-1 text-[0.65rem] text-foreground-muted mt-0.5">
-                <Clock className="h-2.5 w-2.5" />
-                {stop.duration}
-              </div>
+              {stop.duration && (
+                <div className="flex items-center gap-1 text-[0.65rem] text-foreground-muted mt-0.5">
+                  <Clock className="h-2.5 w-2.5" />
+                  {stop.duration}
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-foreground leading-snug">{stop.name}</div>
-              <div className="flex items-center gap-1 text-xs text-foreground-muted mt-1">
-                <MapPin className="h-3 w-3" />
-                {stop.neighborhood}
-              </div>
-              <div className="text-xs text-foreground-muted/80 italic mt-1">
-                {stop.note}
-              </div>
+              <div className="text-foreground leading-snug">{stop.title}</div>
+              {stop.neighborhood && (
+                <div className="flex items-center gap-1 text-xs text-foreground-muted mt-1">
+                  <MapPin className="h-3 w-3" />
+                  {stop.neighborhood}
+                </div>
+              )}
+              {stop.note && (
+                <div className="text-xs text-foreground-muted/80 italic mt-1">
+                  {stop.note}
+                </div>
+              )}
             </div>
           </li>
         ))}

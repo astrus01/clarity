@@ -4,94 +4,80 @@ import { PanelFrame } from "@/components/chat/panel-frame";
 import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const tools = [
-  { key: "cursor", name: "Cursor", tagline: "Editor-first" },
-  { key: "copilot", name: "Copilot", tagline: "Ubiquitous" },
-  {
-    key: "claude",
-    name: "Claude Code",
-    tagline: "Agentic",
-    recommended: true,
-  },
-];
-
-type Cell =
-  | { kind: "text"; value: string }
-  | { kind: "bool"; value: boolean }
-  | { kind: "score"; value: number };
-
-const rows: {
+export type ComparisonRow = {
   feature: string;
   note?: string;
-  cells: Record<string, Cell>;
-}[] = [
-  {
-    feature: "Multi-file editing",
-    cells: {
-      cursor: { kind: "bool", value: true },
-      copilot: { kind: "bool", value: false },
-      claude: { kind: "bool", value: true },
-    },
-  },
-  {
-    feature: "Agent mode",
-    note: "Plans and executes tasks autonomously",
-    cells: {
-      cursor: { kind: "text", value: "Basic" },
-      copilot: { kind: "text", value: "Preview" },
-      claude: { kind: "text", value: "Native" },
-    },
-  },
-  {
-    feature: "Terminal access",
-    cells: {
-      cursor: { kind: "bool", value: true },
-      copilot: { kind: "bool", value: false },
-      claude: { kind: "bool", value: true },
-    },
-  },
-  {
-    feature: "Starting price",
-    cells: {
-      cursor: { kind: "text", value: "$20 / mo" },
-      copilot: { kind: "text", value: "$10 / mo" },
-      claude: { kind: "text", value: "$17 / mo" },
-    },
-  },
-  {
-    feature: "Best-for score · juniors",
-    cells: {
-      cursor: { kind: "score", value: 4 },
-      copilot: { kind: "score", value: 3 },
-      claude: { kind: "score", value: 5 },
-    },
-  },
-];
+  cells: string[]; // length must match tools.length; "yes"/"no" become booleans
+};
 
-function Dots({ n, max = 5 }: { n: number; max?: number }) {
-  return (
-    <span className="inline-flex gap-1 items-center">
-      {Array.from({ length: max }).map((_, i) => (
-        <span
-          key={i}
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            i < n ? "bg-primary" : "bg-border",
-          )}
-        />
-      ))}
-    </span>
-  );
+export type ComparisonData = {
+  title?: string;
+  tools: string[];
+  rows: ComparisonRow[];
+  recommendation?: string;
+  recommendedIndex?: number;
+};
+
+const DEFAULT_DATA: ComparisonData = {
+  title: "AI coding assistants, compared",
+  tools: ["Cursor", "Copilot", "Claude Code"],
+  recommendedIndex: 2,
+  rows: [
+    { feature: "Multi-file editing", cells: ["yes", "no", "yes"] },
+    {
+      feature: "Agent mode",
+      note: "Plans and executes tasks autonomously",
+      cells: ["Basic", "Preview", "Native"],
+    },
+    { feature: "Terminal access", cells: ["yes", "no", "yes"] },
+    { feature: "Starting price", cells: ["$20 / mo", "$10 / mo", "$17 / mo"] },
+    { feature: "Best-for score · juniors", cells: ["★★★★", "★★★", "★★★★★"] },
+  ],
+  recommendation:
+    "For a junior developer, Claude Code offers the strongest scaffolding — agent-native workflows, inline reasoning, and a terminal that keeps the editor as a canvas rather than a cage.",
+};
+
+function renderCell(value: string) {
+  const norm = value.trim().toLowerCase();
+  if (norm === "yes" || norm === "true" || norm === "✓") {
+    return <Check className="h-4 w-4 text-primary" />;
+  }
+  if (norm === "no" || norm === "false" || norm === "-") {
+    return <Minus className="h-4 w-4 text-foreground-muted" />;
+  }
+  // star rating shorthand like "★★★"
+  if (/^★+$/.test(value)) {
+    const n = value.length;
+    return (
+      <span className="inline-flex gap-1 items-center">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              i < n ? "bg-primary" : "bg-border",
+            )}
+          />
+        ))}
+      </span>
+    );
+  }
+  return <span className="text-foreground">{value}</span>;
 }
 
-export function ComparisonTablePanel() {
+export function ComparisonTablePanel({ data }: { data?: ComparisonData }) {
+  const d = data ?? DEFAULT_DATA;
+  const tools = d.tools?.length ? d.tools : DEFAULT_DATA.tools;
+  const rows = d.rows?.length ? d.rows : DEFAULT_DATA.rows;
+  const recIdx = d.recommendedIndex ?? -1;
+
   return (
     <PanelFrame
       eyebrow="Research · live sources"
-      title="AI coding assistants, compared"
+      title={d.title ?? "Compared"}
       meta={
         <span className="font-mono text-[0.7rem] text-foreground-muted">
-          3 sources · updated just now
+          {tools.length} options · updated just now
         </span>
       }
     >
@@ -103,23 +89,20 @@ export function ComparisonTablePanel() {
                 <th className="px-4 py-3 text-left font-mono text-[0.7rem] uppercase tracking-[0.1em] text-foreground-muted font-normal">
                   Feature
                 </th>
-                {tools.map((t) => (
+                {tools.map((name, i) => (
                   <th
-                    key={t.key}
+                    key={`${name}-${i}`}
                     className="px-4 py-3 text-left font-normal align-bottom"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-serif text-base text-foreground">
-                        {t.name}
+                        {name}
                       </span>
-                      {t.recommended && (
+                      {i === recIdx && (
                         <span className="text-[0.65rem] font-mono uppercase tracking-[0.1em] text-primary border border-[color:var(--primary)]/40 rounded-full px-1.5 py-0.5">
                           Pick
                         </span>
                       )}
-                    </div>
-                    <div className="font-mono text-[0.7rem] text-foreground-muted mt-0.5">
-                      {t.tagline}
                     </div>
                   </th>
                 ))}
@@ -128,7 +111,7 @@ export function ComparisonTablePanel() {
             <tbody>
               {rows.map((r, i) => (
                 <tr
-                  key={r.feature}
+                  key={`${r.feature}-${i}`}
                   className={cn(
                     "border-t border-border",
                     i % 2 === 1 && "bg-background/30",
@@ -142,27 +125,17 @@ export function ComparisonTablePanel() {
                       </div>
                     )}
                   </td>
-                  {tools.map((t) => {
-                    const cell = r.cells[t.key];
+                  {tools.map((_name, colIdx) => {
+                    const cell = r.cells[colIdx] ?? "";
                     return (
                       <td
-                        key={t.key}
+                        key={colIdx}
                         className={cn(
                           "px-4 py-3.5 align-top",
-                          t.recommended && "bg-primary/5",
+                          colIdx === recIdx && "bg-primary/5",
                         )}
                       >
-                        {cell.kind === "bool" ? (
-                          cell.value ? (
-                            <Check className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Minus className="h-4 w-4 text-foreground-muted" />
-                          )
-                        ) : cell.kind === "score" ? (
-                          <Dots n={cell.value} />
-                        ) : (
-                          <span className="text-foreground">{cell.value}</span>
-                        )}
+                        {renderCell(cell)}
                       </td>
                     );
                   })}
@@ -172,20 +145,19 @@ export function ComparisonTablePanel() {
           </table>
         </div>
 
-        <div className="rounded-md border border-border p-4 bg-background/30">
-          <div className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-foreground-muted mb-2">
-            Recommendation
+        {d.recommendation && (
+          <div className="rounded-md border border-border p-4 bg-background/30">
+            <div className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-foreground-muted mb-2">
+              Recommendation
+            </div>
+            <p
+              className="text-foreground leading-[1.7] text-[0.95rem]"
+              style={{ maxWidth: "65ch" }}
+            >
+              {d.recommendation}
+            </p>
           </div>
-          <p
-            className="text-foreground leading-[1.7] text-[0.95rem]"
-            style={{ maxWidth: "65ch" }}
-          >
-            For a junior developer, <strong className="font-semibold text-foreground">Claude Code</strong> offers
-            the strongest scaffolding — agent-native workflows, inline
-            reasoning, and a terminal that keeps the editor as a canvas rather
-            than a cage.
-          </p>
-        </div>
+        )}
       </div>
     </PanelFrame>
   );

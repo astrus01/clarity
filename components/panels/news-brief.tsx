@@ -4,23 +4,44 @@ import { PanelFrame, PanelFooter } from "@/components/chat/panel-frame";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, TrendingUp } from "lucide-react";
 
-const sources = [
-  {
-    outlet: "The Verge",
-    headline: "Anthropic launches new Claude capabilities for agentic workflows",
-    url: "https://www.theverge.com",
-  },
-  {
-    outlet: "TechCrunch",
-    headline: "Enterprises double their AI infrastructure budgets in Q2",
-    url: "https://techcrunch.com",
-  },
-  {
-    outlet: "Wired",
-    headline: "The generative UI movement: when chatbots stop being text-first",
-    url: "https://www.wired.com",
-  },
-];
+export type NewsStory = {
+  outlet: string;
+  headline: string;
+  url: string;
+  summary?: string;
+  publishedAt?: string;
+};
+
+export type NewsBriefData = {
+  eyebrow?: string;
+  title?: string;
+  stories: NewsStory[];
+  intro?: string;
+};
+
+const DEFAULT_DATA: NewsBriefData = {
+  eyebrow: "News Brief · Today, 8:42 AM",
+  title: "Today in AI",
+  stories: [
+    {
+      outlet: "The Verge",
+      headline: "Anthropic launches new Claude capabilities for agentic workflows",
+      url: "https://www.theverge.com",
+    },
+    {
+      outlet: "TechCrunch",
+      headline: "Enterprises double their AI infrastructure budgets in Q2",
+      url: "https://techcrunch.com",
+    },
+    {
+      outlet: "Wired",
+      headline: "The generative UI movement: when chatbots stop being text-first",
+      url: "https://www.wired.com",
+    },
+  ],
+  intro:
+    "Three stories shaped the AI narrative overnight. Anthropic announced deeper agentic tooling, enterprise budgets continued their steep climb, and a growing chorus of product teams started abandoning plain text in favor of rendered, interactive responses — the same shift that sits at the center of Clarity.",
+};
 
 const followUps = [
   "Compare sentiment across outlets",
@@ -28,34 +49,36 @@ const followUps = [
   "Brief me tomorrow at 8am",
 ];
 
-export function NewsBriefPanel() {
+export function NewsBriefPanel({ data }: { data?: NewsBriefData }) {
+  const d = data ?? DEFAULT_DATA;
+  const stories = d.stories?.length ? d.stories : DEFAULT_DATA.stories;
+  const intro = d.intro ?? (data ? undefined : DEFAULT_DATA.intro);
+
   return (
     <PanelFrame
-      eyebrow="News Brief · Today, 8:42 AM"
-      title="Today in AI"
+      eyebrow={d.eyebrow ?? "News Brief"}
+      title={d.title ?? "Today's stories"}
       meta={
         <Badge variant="success">
           <TrendingUp className="h-3 w-3" />
-          Positive sentiment
+          Synthesized
         </Badge>
       }
     >
       <div className="flex flex-col gap-5">
-        <p
-          className="text-foreground leading-[1.7] text-[0.95rem]"
-          style={{ maxWidth: "65ch" }}
-        >
-          Three stories shaped the AI narrative overnight. Anthropic announced
-          deeper agentic tooling, enterprise budgets continued their steep
-          climb, and a growing chorus of product teams started abandoning plain
-          text in favor of rendered, interactive responses — the same shift
-          that sits at the center of Clarity.
-        </p>
+        {intro && (
+          <p
+            className="text-foreground leading-[1.7] text-[0.95rem]"
+            style={{ maxWidth: "65ch" }}
+          >
+            {intro}
+          </p>
+        )}
 
         <ol className="flex flex-col divide-y divide-border rounded-md border border-border overflow-hidden">
-          {sources.map((s, i) => (
+          {stories.slice(0, 6).map((s, i) => (
             <li
-              key={s.url}
+              key={`${s.url}-${i}`}
               className="group flex items-start gap-4 px-4 py-3.5 hover:bg-surface-highlight transition-colors"
             >
               <span
@@ -70,6 +93,7 @@ export function NewsBriefPanel() {
                   style={{ letterSpacing: "0.1em" }}
                 >
                   {s.outlet}
+                  {s.publishedAt ? ` · ${s.publishedAt}` : ""}
                 </div>
                 <a
                   href={s.url}
@@ -80,6 +104,11 @@ export function NewsBriefPanel() {
                   <span>{s.headline}</span>
                   <ExternalLink className="h-3 w-3 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </a>
+                {s.summary && (
+                  <p className="text-[0.85rem] text-foreground-muted leading-relaxed mt-1.5">
+                    {s.summary}
+                  </p>
+                )}
               </div>
             </li>
           ))}

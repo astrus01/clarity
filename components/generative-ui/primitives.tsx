@@ -367,19 +367,38 @@ export const TextInput = ({ props }: ComponentProps) => {
 
 export const Callout = ({ props, children }: ComponentProps) => {
   const variant = (props.variant ?? "info") as "info" | "tip" | "warning" | "important";
-  const palette: Record<typeof variant, string> = {
-    info: "border-l-primary bg-primary/5",
-    tip: "border-l-success bg-success/5",
-    warning: "border-l-warning bg-warning/5",
-    important: "border-l-primary bg-primary/10",
+  const dotColor: Record<typeof variant, string> = {
+    info: "bg-primary",
+    tip: "bg-success",
+    warning: "bg-warning",
+    important: "bg-primary",
+  };
+  const bgTint: Record<typeof variant, string> = {
+    info: "bg-primary/5",
+    tip: "bg-success/5",
+    warning: "bg-warning/5",
+    important: "bg-primary/10",
   };
   return (
-    <div className={cn("border-l-2 rounded-r-md px-4 py-3", palette[variant])}>
-      {props.title && (
-        <div className="font-medium text-foreground mb-1">{props.title}</div>
+    <div
+      className={cn(
+        "rounded-md border border-border/60 px-4 py-3",
+        bgTint[variant],
       )}
-      <div className="text-sm text-foreground-muted">
-        {props.content ?? children}
+    >
+      <div className="flex items-baseline gap-2.5">
+        <span
+          aria-hidden
+          className={cn("h-1.5 w-1.5 rounded-full shrink-0 translate-y-[0.35em]", dotColor[variant])}
+        />
+        <div className="flex-1 min-w-0">
+          {props.title && (
+            <div className="font-medium text-foreground mb-1">{props.title}</div>
+          )}
+          <div className="text-sm text-foreground-muted">
+            {props.content ?? children}
+          </div>
+        </div>
       </div>
     </div>
   );

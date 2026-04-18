@@ -10,15 +10,20 @@ export type PanelKind =
 
 export type ExchangeStatus = "pending" | "streaming" | "complete" | "error";
 
+export type ActivityLine = { tool: string; detail: string };
+
 export type Exchange = {
   id: string;
   prompt: string;
   gist: string;
   timestamp: string;
 
-  // Seed/panel-driven exchanges
+  // Panel (rendered from seed OR emitted by the live agent)
   panelKind?: PanelKind;
-  activity?: { tool: string; detail: string }[];
+  panelData?: unknown;
+
+  // Activity stream — seed sessions use it decoratively; live runs append as tools fire.
+  activity?: ActivityLine[];
 
   // Live text streaming
   text?: string;

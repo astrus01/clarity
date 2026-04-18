@@ -1,22 +1,32 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { ArrowUp, Mic, Square } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { ArrowUp, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/hooks/use-voice";
 
 export function InputBar({
   onSubmit,
   placeholder = "Ask Clarity anything…",
-  listening = false,
-  onToggleMic,
+  autoFocus,
 }: {
   onSubmit?: (text: string) => void;
   placeholder?: string;
-  listening?: boolean;
-  onToggleMic?: () => void;
+  autoFocus?: boolean;
 }) {
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  const handleTranscript = useCallback((transcript: string) => {
+    const cleaned = transcript.trim();
+    if (!cleaned) return;
+    setValue((prev) => (prev ? prev + " " + cleaned : cleaned));
+    requestAnimationFrame(() => ref.current?.focus());
+  }, []);
+
+  const { listening, supported, start, stop } = useVoice({
+    onResult: handleTranscript,
+  });
 
   // Auto-size textarea
   useEffect(() => {
@@ -26,11 +36,36 @@ export function InputBar({
     ta.style.height = Math.min(ta.scrollHeight, 192) + "px";
   }, [value]);
 
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
+
+  // ⌘K / Ctrl+K → toggle voice
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        if (!supported) return;
+        if (listening) stop();
+        else start();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [listening, supported, start, stop]);
+
   const send = () => {
     const v = value.trim();
     if (!v) return;
     onSubmit?.(v);
     setValue("");
+    if (listening) stop();
+  };
+
+  const toggleMic = () => {
+    if (!supported) return;
+    if (listening) stop();
+    else start();
   };
 
   return (
@@ -42,10 +77,25 @@ export function InputBar({
     >
       <button
         type="button"
-        onClick={onToggleMic}
-        aria-label={listening ? "Stop listening" : "Start voice input"}
+        onClick={toggleMic}
+        disabled={!supported}
+        aria-label={
+          !supported
+            ? "Voice unsupported in this browser"
+            : listening
+              ? "Stop listening"
+              : "Start voice input (⌘K)"
+        }
+        title={
+          !supported
+            ? "Voice unsupported in this browser"
+            : listening
+              ? "Stop listening"
+              : "Voice input · ⌘K"
+        }
         className={cn(
           "shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-all",
+          !supported && "opacity-40 cursor-not-allowed",
           listening
             ? "bg-primary/10 text-primary"
             : "text-foreground-muted hover:text-primary hover:bg-surface-highlight",
@@ -65,7 +115,7 @@ export function InputBar({
             send();
           }
         }}
-        placeholder={placeholder}
+        placeholder={listening ? "Listening…" : placeholder}
         className="flex-1 resize-none bg-transparent py-2 text-[0.95rem] leading-relaxed text-foreground placeholder:italic placeholder:text-foreground-muted focus:outline-none"
         style={{ maxHeight: "12rem" }}
       />
@@ -89,7 +139,6 @@ export function InputBar({
 }
 
 function VoiceWaveform() {
-  // Subtle, quiet animated bars — no neon, no glow
   return (
     <div className="flex items-center gap-[3px] h-4" aria-hidden>
       {[0, 1, 2, 3].map((i) => (
