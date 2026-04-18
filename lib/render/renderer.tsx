@@ -1,54 +1,51 @@
 "use client";
 
-import type { SpecData } from "@json-render/core";
-import {
-  NewsBriefCard,
-  EmailDraftCard,
-  CalendarBlockCard,
-  ResearchReportCard,
-  ComparisonTableCard,
-  Globe3dCard,
-} from "@/components/generative-ui";
+import { memo, Suspense, useMemo } from "react";
+import { processSpec } from "./process";
+import { registry } from "./registry";
+import { StateProvider, useRenderState } from "./state-context";
+import type { Spec } from "./types";
 
-interface ExplorerRendererProps {
-  spec: SpecData;
-  loading?: boolean;
+export function GenerativeRenderer({ spec }: { spec: Spec }) {
+  const clean = useMemo(() => processSpec(spec), [spec]);
+  return (
+    <StateProvider initialState={clean.state ?? {}}>
+      <Suspense fallback={<div className="text-foreground-muted text-sm">Loading…</div>}>
+        <RenderNode spec={clean} nodeKey={clean.root} />
+      </Suspense>
+    </StateProvider>
+  );
 }
 
-const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
-  "news-brief": NewsBriefCard,
-  "email-draft": EmailDraftCard,
-  "calendar-block": CalendarBlockCard,
-  "research-report": ResearchReportCard,
-  "comparison-table": ComparisonTableCard,
-  "globe-3d": Globe3dCard,
-};
+const RenderNode = memo(function RenderNode({
+  spec,
+  nodeKey,
+}: {
+  spec: Spec;
+  nodeKey: string;
+}) {
+  const { emit } = useRenderState();
+  const element = spec.elements[nodeKey];
+  if (!element) return null;
 
-export function ExplorerRenderer({ spec, loading }: ExplorerRendererProps) {
-  if (loading) {
-    return (
-      <div className="w-full flex items-center justify-center py-12">
-        <div className="text-sm text-muted-foreground animate-shimmer">
-          Generating UI...
-        </div>
-      </div>
-    );
-  }
-
-  const Component = COMPONENT_MAP[spec.type];
-
+  const Component = registry[element.type];
   if (!Component) {
     return (
-      <div className="p-4 border border-border/40 rounded-lg bg-muted/20">
-        <div className="text-sm text-muted-foreground">
-          Unknown component type: {spec.type}
-        </div>
-        <pre className="text-xs mt-2 overflow-auto">
-          {JSON.stringify(spec.data, null, 2)}
-        </pre>
+      <div className="text-xs text-warning font-mono">
+        Unknown component: {element.type}
       </div>
     );
   }
 
-  return <Component {...(spec.data as any)} />;
-}
+  const children = element.children?.map((childKey) => (
+    <RenderNode key={childKey} spec={spec} nodeKey={childKey} />
+  ));
+
+  return (
+    <Component props={element.props ?? {}} emit={emit}>
+      {children}
+    </Component>
+  );
+});
+
+export { GenerativeRenderer as ExplorerRenderer };

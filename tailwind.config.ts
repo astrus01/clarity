@@ -1,72 +1,64 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss";
+
+const config: Config = {
   darkMode: ["class"],
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
   ],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        // Clarity-specific colors
-        clarity: {
-          "electric-blue": "#3b82f6",
-          "warm-amber": "#f59e0b",
-          "emerald": "#10b981",
-          "dark-bg": "#0a0a0f",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        background: "oklch(0.12 0.01 255)",
+        surface: "oklch(0.16 0.02 255)",
+        "surface-highlight": "oklch(0.20 0.02 255)",
+        border: "oklch(0.30 0.02 255)",
+        foreground: "oklch(0.92 0.01 255)",
+        "foreground-muted": "oklch(0.65 0.01 255)",
+        primary: "oklch(0.75 0.07 75)",
+        "primary-hover": "oklch(0.72 0.07 75)",
+        success: "oklch(0.70 0.08 160)",
+        warning: "oklch(0.72 0.10 75)",
+        muted: "oklch(0.50 0.01 255)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"],
+        sans: ["Manrope", "sans-serif"],
+        serif: ["Aleo", "serif"],
+        mono: ["JetBrains Mono", "monospace"],
+      },
+      spacing: {
+        "space-xs": "0.25rem",    // 4px
+        "space-sm": "0.5rem",     // 8px
+        "space-md": "1rem",       // 16px
+        "space-lg": "1.5rem",     // 24px
+        "space-xl": "2rem",       // 32px
+        "space-2xl": "3rem",      // 48px
+      },
+      borderRadius: {
+        sm: "0.25rem",
+        md: "0.5rem",
+        lg: "0.75rem",
+        xl: "1rem",
+        full: "9999px",
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(8px)" },
+          "100%": { transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 300ms ease-out-quint forwards",
+        "slide-up": "slide-up 300ms ease-out-quint forwards",
       },
     },
   },
-  plugins: [require("@tailwindcss/forms")],
+  plugins: [],
 };
+export default config;

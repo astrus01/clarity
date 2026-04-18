@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "@/app/globals.css";
+import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
 export const metadata: Metadata = {
-  title: "Clarity — Mission Control Dashboard",
-  description: "AI-powered dashboard for your digital life",
+  title: "Clarity — The Internet, Rendered for You",
+  description:
+    "An AI chat interface where every response becomes an interactive UI panel. Powered by Claude.",
+  keywords: ["AI", "chat", "Clarity", "genUIne", "Anthropic", "Claude"],
 };
 
 export default function RootLayout({
@@ -20,14 +16,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+      <body className="font-sans antialiased bg-background text-foreground">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
