@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Utensils, Refrigerator, Plane, ClipboardList, CalendarClock } from "lucide-react";
+import { Newspaper, GitCompare, Utensils, Plane, CalendarClock } from "lucide-react";
 import { InputBar } from "@/components/chat/input-bar";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -44,31 +44,31 @@ const PANEL_MAP: Record<PanelKind, PanelComponent> = {
   "on-the-road": OnTheRoadPanel as PanelComponent,
 };
 
-const SUGGESTED: { icon: typeof Utensils; label: string; prompt: string }[] = [
+const SUGGESTED: { icon: typeof Newspaper; label: string; prompt: string }[] = [
+  {
+    icon: Newspaper,
+    label: "Top tech news",
+    prompt: "What's the most important tech news right now?",
+  },
+  {
+    icon: GitCompare,
+    label: "Compare AI coding tools",
+    prompt: "Compare Cursor, Copilot, and Claude Code for a junior developer.",
+  },
+  {
+    icon: CalendarClock,
+    label: "My day at a glance",
+    prompt: "What's on my calendar today?",
+  },
   {
     icon: Utensils,
     label: "What should I eat now?",
     prompt: "What should I eat right now?",
   },
   {
-    icon: Refrigerator,
-    label: "Cook from my fridge",
-    prompt: "I have eggs, half an onion, frozen spinach, and leftover rice. What's for dinner in 20 minutes?",
-  },
-  {
     icon: Plane,
     label: "Plan a travel day",
     prompt: "I'm flying LAX to Heathrow tonight with 80 minutes before the flight. Plan my meals.",
-  },
-  {
-    icon: ClipboardList,
-    label: "Log my last meal",
-    prompt: "I just had a Shake Shack burger and fries. What should dinner look like?",
-  },
-  {
-    icon: CalendarClock,
-    label: "Eat around my schedule",
-    prompt: "What's on my calendar today and what should I eat around it?",
   },
 ];
 
@@ -145,7 +145,7 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
           className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-foreground-muted"
           style={{ letterSpacing: "0.2em" }}
         >
-          Healthy in Real Life · Real Time
+          The Internet, Rendered for You
         </div>
       </header>
 
@@ -162,19 +162,19 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
               className="font-serif text-[3.25rem] md:text-[4.5rem] leading-[1.03] text-foreground m-0"
               style={{ letterSpacing: "-0.035em", fontWeight: 300 }}
             >
-              Healthy isn't a plan.
+              Ask anything.
               <br />
               <span className="italic text-foreground-muted">
-                It's a real-time decision.
+                Get a panel, not a paragraph.
               </span>
             </h1>
             <p
               className="text-foreground-muted max-w-xl mt-2"
               style={{ lineHeight: 1.6 }}
             >
-              Tell Clarity your situation — what you have, where you are, what's
-              next. It checks your calendar, runs the macros, and hands back one
-              specific, smart move. Not a paragraph. A panel.
+              News, research, email, calendar, weather, comparisons, travel,
+              real-time food decisions — every answer comes back as an
+              interactive panel you can scan in seconds.
             </p>
           </div>
 
@@ -367,11 +367,11 @@ function EmptyChatHint({ title }: { title: string }) {
         className="font-serif text-[2rem] leading-tight text-foreground m-0"
         style={{ letterSpacing: "-0.02em" }}
       >
-        What are you eating next?
+        What would you like to see?
       </h2>
       <p className="text-foreground-muted leading-relaxed">
-        Tell Clarity your situation — fridge contents, current location, last
-        meal, flight ahead. It'll hand you the specific next move.
+        Ask Clarity anything — news, research, a comparison, your schedule, a
+        meal, a travel day. It will hand back a rendered panel.
       </p>
     </div>
   );
