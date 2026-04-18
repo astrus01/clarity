@@ -50,6 +50,7 @@ export default function Page() {
   const activeId = useChatStore((s) => s.activeId);
   const setActive = useChatStore((s) => s.setActive);
   const createSession = useChatStore((s) => s.createSession);
+  const deleteSession = useChatStore((s) => s.deleteSession);
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeId) ?? sessions[0],
@@ -81,6 +82,7 @@ export default function Page() {
         activeId={activeSession.id}
         onSelect={handleSelect}
         onNew={handleNew}
+        onDelete={deleteSession}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((v) => !v)}
       />
