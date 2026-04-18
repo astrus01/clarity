@@ -44,21 +44,32 @@ const PANEL_MAP: Record<PanelKind, PanelComponent> = {
   "on-the-road": OnTheRoadPanel as PanelComponent,
 };
 
-const SUGGESTED = [
-  { icon: Utensils, label: "What should I eat right now?" },
+const SUGGESTED: { icon: typeof Utensils; label: string; prompt: string }[] = [
+  {
+    icon: Utensils,
+    label: "What should I eat now?",
+    prompt: "What should I eat right now?",
+  },
   {
     icon: Refrigerator,
-    label: "Eggs, spinach, leftover rice — what can I make in 20 minutes?",
+    label: "Cook from my fridge",
+    prompt: "I have eggs, half an onion, frozen spinach, and leftover rice. What's for dinner in 20 minutes?",
   },
   {
     icon: Plane,
-    label: "I'm flying LAX to Heathrow tonight — plan my meals.",
+    label: "Plan a travel day",
+    prompt: "I'm flying LAX to Heathrow tonight with 80 minutes before the flight. Plan my meals.",
   },
   {
     icon: ClipboardList,
-    label: "I just had a Shake Shack burger and fries. What's dinner?",
+    label: "Log my last meal",
+    prompt: "I just had a Shake Shack burger and fries. What should dinner look like?",
   },
-  { icon: CalendarClock, label: "Anything on my calendar I should eat around?" },
+  {
+    icon: CalendarClock,
+    label: "Eat around my schedule",
+    prompt: "What's on my calendar today and what should I eat around it?",
+  },
 ];
 
 export default function Page() {
@@ -177,7 +188,7 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
                 <PromptPill
                   icon={s.icon}
                   label={s.label}
-                  onClick={() => onPrompt(s.label)}
+                  onClick={() => onPrompt(s.prompt)}
                 />
               </div>
             ))}

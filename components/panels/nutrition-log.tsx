@@ -169,7 +169,7 @@ export function NutritionLogPanel({ data }: { data?: NutritionLogData }) {
 
         {/* Watch out */}
         {d.watchOut && (
-          <div className="rounded-md bg-[color:var(--primary)]/10 border border-[color:var(--primary)]/25 px-4 py-3">
+          <div className="rounded-md bg-surface-highlight border border-[color:var(--primary)]/30 px-4 py-3">
             <div
               className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-[color:var(--primary)] mb-1"
               style={{ letterSpacing: "0.14em" }}

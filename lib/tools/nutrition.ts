@@ -66,15 +66,49 @@ export async function estimateNutrition(
       .join("")
       .trim();
 
-    const cleaned = text
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/, "")
-      .trim();
+    const jsonText = extractJsonObject(text);
+    if (!jsonText) return null;
 
-    const parsed = JSON.parse(cleaned) as NutritionEstimateResult;
+    const parsed = JSON.parse(jsonText) as NutritionEstimateResult;
     if (!Array.isArray(parsed.items) || !parsed.total) return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+function extractJsonObject(text: string): string | null {
+  const fenced = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  if (fenced.startsWith("{")) return fenced;
+
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
 }
