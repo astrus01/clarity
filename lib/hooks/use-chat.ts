@@ -177,7 +177,7 @@ export function useClarityChat() {
         fetch("/api/title", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmed, reply: textSoFar }),
+          body: JSON.stringify({ message: trimmed }),
         })
           .then((r) => (r.ok ? r.json() : null))
           .then((payload: { title?: string } | null) => {

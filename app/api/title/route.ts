@@ -11,13 +11,19 @@ function fallbackTitle(raw: string): string {
   return words || "New chat";
 }
 
+function sanitize(text: string): string {
+  return text
+    .trim()
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/^(title:?|chat title:?)\s*/i, "")
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 48);
+}
+
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as {
-    message?: string;
-    reply?: string;
-  };
+  const body = (await req.json().catch(() => ({}))) as { message?: string };
   const message = String(body.message ?? "").trim();
-  const reply = String(body.reply ?? "").trim();
 
   if (!message) {
     return Response.json({ title: "New chat" });
@@ -32,29 +38,34 @@ export async function POST(req: NextRequest) {
     const client = new Anthropic({ apiKey });
     const res = await client.messages.create({
       model: MODEL,
-      max_tokens: 40,
+      max_tokens: 24,
       system:
-        "Write a 2-4 word title for this chat. Title Case. No quotes. No trailing punctuation. Capture the subject matter, not the action.",
+        "You name chat threads. Given a user's first message, output a 2-to-4 word Title Case label for the subject matter. Output ONLY the title — no quotes, no punctuation at the end, no preamble, no explanation, no meta commentary. If the message is a greeting with no real subject, output exactly: New Chat.",
       messages: [
         {
           role: "user",
-          content: reply
-            ? `User: ${message}\n\nAssistant: ${reply.slice(0, 400)}`
-            : message,
+          content: `First message: ${message.slice(0, 500)}\n\nTitle:`,
         },
       ],
     });
 
-    const text = res.content
+    const raw = res.content
       .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
       .map((b) => b.text)
-      .join("")
-      .trim()
-      .replace(/^["']|["']$/g, "")
-      .replace(/[.!?]+$/g, "")
-      .slice(0, 60);
+      .join("");
 
-    return Response.json({ title: text || fallbackTitle(message) });
+    const title = sanitize(raw);
+    const words = title.split(" ").filter(Boolean);
+
+    // Reject obviously-wrong outputs (sentence-like, too long, contains verbs of continuation).
+    const bad =
+      !title ||
+      words.length > 6 ||
+      /^(i |sure|here|let me|it |the user|appreciate|understand|thank|assist)/i.test(title);
+
+    return Response.json({
+      title: bad ? fallbackTitle(message) : title,
+    });
   } catch {
     return Response.json({ title: fallbackTitle(message) });
   }

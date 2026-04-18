@@ -4,6 +4,8 @@ export type ExaResult = {
   text?: string;
   publishedDate?: string;
   author?: string;
+  image?: string;
+  favicon?: string;
 };
 
 type ExaApiResult = {
@@ -12,6 +14,8 @@ type ExaApiResult = {
   text?: string;
   publishedDate?: string;
   author?: string;
+  image?: string;
+  favicon?: string;
 };
 
 export async function searchExa(
@@ -33,7 +37,10 @@ export async function searchExa(
         numResults: opts?.numResults ?? 6,
         useAutoprompt: opts?.useAutoprompt ?? true,
         type: opts?.type ?? "neural",
-        contents: { text: { maxCharacters: 1500 } },
+        contents: {
+          text: { maxCharacters: 1500 },
+          livecrawl: "fallback",
+        },
       }),
     });
 
@@ -47,8 +54,19 @@ export async function searchExa(
         text: r.text,
         publishedDate: r.publishedDate,
         author: r.author,
+        image: r.image,
+        favicon: r.favicon,
       }));
   } catch {
     return [];
+  }
+}
+
+export function hostFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return url;
   }
 }

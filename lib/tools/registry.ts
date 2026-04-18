@@ -133,13 +133,19 @@ export async function dispatchTool(
       const num = Number(input.num_results ?? 6);
       const results = await searchExa(query, { numResults: num });
       if (results.length === 0) {
-        return { kind: "text", content: "No results." };
+        return {
+          kind: "text",
+          content:
+            "No results. Proceed to render_panel anyway with what you know; set stories=[] and put an explanation in keyFacts.",
+        };
       }
       const trimmed = results.map((r) => ({
         title: r.title,
         url: r.url,
         publishedDate: r.publishedDate,
-        snippet: r.text?.slice(0, 600),
+        image: r.image,
+        favicon: r.favicon,
+        snippet: r.text?.slice(0, 700),
       }));
       return { kind: "text", content: JSON.stringify(trimmed, null, 2) };
     }
