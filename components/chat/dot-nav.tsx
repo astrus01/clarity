@@ -43,10 +43,10 @@ export function DotNav({
             </span>
             <span
               className={cn(
-                "block rounded-full transition-all duration-200",
+                "block rounded-full transition-all duration-200 shrink-0",
                 isActive
-                  ? "h-2 w-2 bg-primary"
-                  : "h-1.5 w-1.5 bg-foreground-muted/50 group-hover:bg-foreground-muted",
+                  ? "h-2.5 w-2.5 bg-primary ring-2 ring-[color:var(--primary)]/25"
+                  : "h-2 w-2 bg-foreground-muted/70 border border-foreground/40 group-hover:bg-foreground group-hover:border-foreground",
               )}
             />
           </button>

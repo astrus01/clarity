@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Plus, Search, Settings } from "lucide-react";
+import { ChevronLeft, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./wordmark";
 import type { ChatSession } from "@/lib/chat/sessions";
@@ -125,18 +125,6 @@ export function ChatSidebar({
           )}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-border/60 px-3 py-3">
-          <button
-            className={cn(
-              "w-full flex items-center gap-2.5 h-8 rounded-md text-sm text-foreground-muted hover:text-foreground hover:bg-surface-highlight transition-colors",
-              collapsed ? "justify-center px-0" : "px-2",
-            )}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Settings</span>}
-          </button>
-        </div>
       </div>
     </aside>
   );
