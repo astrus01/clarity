@@ -2,8 +2,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { searchExa } from "./exa";
 import { getWeather } from "./weather";
 import { listThreads, readThread, findMostUrgent } from "./gmail";
-import { listEventsToday, findFocusBlock } from "./calendar";
+import { listEventsRange, listEventsToday, findFocusBlock } from "./calendar";
 import { getQuotes } from "./finance";
+import { searchNews, type NewsCategory } from "./news";
+import { browsePage } from "./browse";
 import type { PanelKind } from "@/lib/chat/sessions";
 
 export type ToolDispatchResult =
@@ -21,7 +23,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "web_search",
     description:
-      "Semantic web search via Exa. Returns the top N results with title, URL, and extracted text snippet. Use for news, research, and any up-to-the-minute questions.",
+      "Semantic web search via Exa. Returns the top N results with title, URL, published date, snippet, and (when available) image + favicon. Use for research, stats, and evergreen questions.",
     input_schema: {
       type: "object",
       properties: {
@@ -32,9 +34,44 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "news_search",
+    description:
+      "Current-day news via NewsAPI. Use for breaking-news / 'what happened today' style questions. Results come with urlToImage thumbnails and outlet names. Prefer this over web_search when the query is about today's news.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        category: {
+          type: "string",
+          enum: [
+            "business",
+            "entertainment",
+            "general",
+            "health",
+            "science",
+            "sports",
+            "technology",
+          ],
+        },
+        country: { type: "string", description: "2-letter ISO, default 'us'" },
+        page_size: { type: "number", description: "1-20 (default 8)" },
+      },
+    },
+  },
+  {
+    name: "browse_page",
+    description:
+      "Fetch a single URL and return its title, description, and extracted readable text (≤ 6KB). Use to deep-read a source after web_search or news_search.",
+    input_schema: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"],
+    },
+  },
+  {
     name: "weather_forecast",
     description:
-      "Get current conditions and a 7-day forecast for a city. Free via Open-Meteo, no key.",
+      "Current conditions + 7-day forecast for a city. Free via Open-Meteo.",
     input_schema: {
       type: "object",
       properties: { location: { type: "string" } },
@@ -44,7 +81,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "gmail_list",
     description:
-      "List the user's recent email threads (mock data for hackathon). Returns subject, from, snippet, urgency.",
+      "List the user's recent email threads. Returns real Gmail when connected, fixture inbox otherwise. Each thread has subject, from, snippet, urgency.",
     input_schema: {
       type: "object",
       properties: { max: { type: "number", description: "Default 10" } },
@@ -53,7 +90,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "gmail_most_urgent",
     description:
-      "Return the single most urgent unread thread, with full body. Use when the user asks to reply to their most urgent / important email.",
+      "Return the single most urgent thread with full body. Use when the user asks to reply to their most urgent / important email.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -67,13 +104,26 @@ export const TOOLS: ToolSpec[] = [
   },
   {
     name: "calendar_today",
-    description: "List all events on the user's calendar for today.",
+    description:
+      "All events on the user's calendar for today. Real Google Calendar when connected, fixture otherwise.",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "calendar_upcoming",
+    description:
+      "Events across a day window, grouped by day. Use for 'this week', 'next Thursday', 'upcoming events'. days_back defaults 0, days_ahead defaults 7. Max 30. Pass to render_panel(calendar, {days: [...]}).",
+    input_schema: {
+      type: "object",
+      properties: {
+        days_back: { type: "number" },
+        days_ahead: { type: "number" },
+      },
+    },
   },
   {
     name: "calendar_find_focus_block",
     description:
-      "Find the largest open block of time on today's calendar of at least the given duration (minutes).",
+      "Largest open block of time today of at least N minutes.",
     input_schema: {
       type: "object",
       properties: { min_minutes: { type: "number" } },
@@ -83,7 +133,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "stock_quotes",
     description:
-      "Get quote data for a list of ticker symbols. Returns price, change, change percent, and an 8-point series.",
+      "Quote data for a list of ticker symbols: price, change, change percent, 8-point series.",
     input_schema: {
       type: "object",
       properties: {
@@ -95,7 +145,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "render_panel",
     description:
-      "Emit an interactive UI panel as the final answer. Choose the kind that best fits the data. The panel renders inline in the chat thread — call this INSTEAD of writing prose when a visual is a better answer. After calling this tool, end your turn with a short one-sentence caption in plain text.",
+      "Emit an interactive UI panel as the final answer. Choose the kind that best fits the data. Call this INSTEAD of writing prose. After calling this tool, end your turn with a short one-sentence caption in plain text.",
     input_schema: {
       type: "object",
       properties: {
@@ -104,6 +154,7 @@ export const TOOLS: ToolSpec[] = [
           enum: [
             "news-brief",
             "email-draft",
+            "inbox",
             "comparison-table",
             "calendar",
             "globe",
@@ -150,6 +201,34 @@ export async function dispatchTool(
       return { kind: "text", content: JSON.stringify(trimmed, null, 2) };
     }
 
+    case "news_search": {
+      const results = await searchNews({
+        query: input.query ? String(input.query) : undefined,
+        category: input.category
+          ? (String(input.category) as NewsCategory)
+          : undefined,
+        country: input.country ? String(input.country) : undefined,
+        pageSize: Number(input.page_size ?? 8),
+      });
+      if (results.length === 0) {
+        return {
+          kind: "text",
+          content:
+            "NEWS_API_KEY missing or no results. Fall back to web_search and then render_panel.",
+        };
+      }
+      return { kind: "text", content: JSON.stringify(results, null, 2) };
+    }
+
+    case "browse_page": {
+      const url = String(input.url ?? "");
+      const page = await browsePage(url);
+      if (!page) {
+        return { kind: "text", content: `Could not fetch ${url}.` };
+      }
+      return { kind: "text", content: JSON.stringify(page) };
+    }
+
     case "weather_forecast": {
       const location = String(input.location ?? "");
       const data = await getWeather(location);
@@ -161,27 +240,38 @@ export async function dispatchTool(
 
     case "gmail_list": {
       const max = Number(input.max ?? 10);
-      return { kind: "text", content: JSON.stringify(listThreads(max)) };
+      const threads = await listThreads(max);
+      return { kind: "text", content: JSON.stringify(threads) };
     }
 
     case "gmail_most_urgent": {
-      return { kind: "text", content: JSON.stringify(findMostUrgent()) };
+      const thread = await findMostUrgent();
+      return { kind: "text", content: JSON.stringify(thread) };
     }
 
     case "gmail_read": {
       const id = String(input.id ?? "");
-      const thread = readThread(id);
+      const thread = await readThread(id);
       if (!thread) return { kind: "text", content: `No thread with id "${id}".` };
       return { kind: "text", content: JSON.stringify(thread) };
     }
 
     case "calendar_today": {
-      return { kind: "text", content: JSON.stringify(listEventsToday()) };
+      const events = await listEventsToday();
+      return { kind: "text", content: JSON.stringify(events) };
+    }
+
+    case "calendar_upcoming": {
+      const days = await listEventsRange({
+        daysBack: Number(input.days_back ?? 0),
+        daysAhead: Number(input.days_ahead ?? 7),
+      });
+      return { kind: "text", content: JSON.stringify(days) };
     }
 
     case "calendar_find_focus_block": {
       const mins = Number(input.min_minutes ?? 120);
-      const block = findFocusBlock(mins);
+      const block = await findFocusBlock(mins);
       return {
         kind: "text",
         content: block
@@ -220,6 +310,12 @@ export function shortDetailFor(
   switch (name) {
     case "web_search":
       return `"${String(input.query ?? "").slice(0, 60)}"`;
+    case "news_search":
+      return input.query
+        ? `"${String(input.query).slice(0, 50)}"`
+        : `${input.category ?? "top headlines"}`;
+    case "browse_page":
+      return hostFromUrl(String(input.url ?? ""));
     case "weather_forecast":
       return String(input.location ?? "");
     case "gmail_list":
@@ -230,6 +326,8 @@ export function shortDetailFor(
       return "ranking unread threads";
     case "calendar_today":
       return "today";
+    case "calendar_upcoming":
+      return `${input.days_back ?? 0}d back · ${input.days_ahead ?? 7}d ahead`;
     case "calendar_find_focus_block":
       return `≥ ${input.min_minutes ?? 120}min`;
     case "stock_quotes":
@@ -240,5 +338,13 @@ export function shortDetailFor(
       return `kind: ${input.kind}`;
     default:
       return "";
+  }
+}
+
+function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 40);
   }
 }

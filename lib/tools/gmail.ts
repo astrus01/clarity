@@ -1,3 +1,5 @@
+import { gmailList, gmailMostUrgent, gmailRead } from "./google";
+
 export type EmailThread = {
   id: string;
   from: string;
@@ -8,10 +10,9 @@ export type EmailThread = {
   body: string;
 };
 
-// Hackathon-mode fixture inbox.
-// Replace with googleapis once OAuth is wired; contract below is intentionally
-// simple so the agent loop doesn't need to change.
-const INBOX: EmailThread[] = [
+// Fixture inbox — used when the user has not connected Google (or the
+// connected account has no recent mail). Lets seeds + demos still render.
+const FIXTURE_INBOX: EmailThread[] = [
   {
     id: "t1",
     from: "Sarah Chen <sarah@acme.co>",
@@ -60,16 +61,34 @@ Sarah`,
   },
 ];
 
-export function listThreads(max = 10): EmailThread[] {
-  return INBOX.slice(0, max);
+export async function listThreads(max = 10): Promise<EmailThread[]> {
+  try {
+    const real = await gmailList(max);
+    if (real.length > 0) return real;
+  } catch {
+    // fall through to fixture
+  }
+  return FIXTURE_INBOX.slice(0, max);
 }
 
-export function readThread(id: string): EmailThread | null {
-  return INBOX.find((t) => t.id === id) ?? null;
+export async function readThread(id: string): Promise<EmailThread | null> {
+  try {
+    const real = await gmailRead(id);
+    if (real) return real;
+  } catch {
+    // fall through
+  }
+  return FIXTURE_INBOX.find((t) => t.id === id) ?? null;
 }
 
-export function findMostUrgent(): EmailThread {
-  const ranked = [...INBOX].sort((a, b) => {
+export async function findMostUrgent(): Promise<EmailThread> {
+  try {
+    const real = await gmailMostUrgent();
+    if (real) return real;
+  } catch {
+    // fall through
+  }
+  const ranked = [...FIXTURE_INBOX].sort((a, b) => {
     const order = { high: 3, medium: 2, low: 1 } as const;
     return order[b.urgency] - order[a.urgency];
   });

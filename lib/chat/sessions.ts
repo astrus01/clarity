@@ -1,6 +1,7 @@
 export type PanelKind =
   | "news-brief"
   | "email-draft"
+  | "inbox"
   | "comparison-table"
   | "calendar"
   | "globe"

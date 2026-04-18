@@ -13,8 +13,13 @@ export type CalendarEvent = {
 
 export type CalendarData = {
   date?: string;
-  events: CalendarEvent[];
+  events?: CalendarEvent[];
   gap?: { start: string; end: string };
+  // Multi-day view — when present, renders a day-by-day stack instead of the scrubber.
+  days?: Array<{
+    label: string; // "Today · Apr 18" or "Fri · Apr 19"
+    events: CalendarEvent[];
+  }>;
 };
 
 const DAY_START = 9; // 9am
@@ -74,7 +79,12 @@ const DEFAULT_DATA: CalendarData = {
 
 export function CalendarPanel({ data }: { data?: CalendarData }) {
   const d = data ?? DEFAULT_DATA;
-  const events = d.events?.length ? d.events : DEFAULT_DATA.events;
+
+  if (d.days && d.days.length > 0) {
+    return <MultiDayCalendar days={d.days} />;
+  }
+
+  const events = d.events?.length ? d.events : DEFAULT_DATA.events!;
   const gap = d.gap;
 
   const gapStartH = gap ? toFractionalHour(gap.start) : 0;
@@ -177,6 +187,67 @@ export function CalendarPanel({ data }: { data?: CalendarData }) {
             </li>
           )}
         </ul>
+      </div>
+    </PanelFrame>
+  );
+}
+
+function MultiDayCalendar({
+  days,
+}: {
+  days: NonNullable<CalendarData["days"]>;
+}) {
+  const totalEvents = days.reduce((s, d) => s + d.events.length, 0);
+  const firstLabel = days[0]?.label ?? "";
+  const lastLabel = days[days.length - 1]?.label ?? "";
+  return (
+    <PanelFrame
+      eyebrow="Calendar · upcoming"
+      title={`${totalEvents} event${totalEvents === 1 ? "" : "s"} across ${days.length} day${days.length === 1 ? "" : "s"}`}
+      meta={
+        <span className="font-mono text-[0.7rem] text-foreground-muted">
+          {firstLabel}{days.length > 1 ? ` → ${lastLabel}` : ""}
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {days.map((day) => (
+          <div key={day.label} className="flex flex-col gap-2">
+            <div
+              className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-foreground-muted"
+              style={{ letterSpacing: "0.14em" }}
+            >
+              {day.label}
+            </div>
+            {day.events.length === 0 ? (
+              <div className="text-sm text-foreground-muted italic pl-1">
+                Nothing scheduled.
+              </div>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+                {day.events.map((ev, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center gap-4 px-4 py-2.5"
+                  >
+                    <span className="font-mono text-[0.7rem] tabular-nums text-foreground-muted w-28 shrink-0">
+                      {ev.start.toLowerCase()} – {ev.end.toLowerCase()}
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-foreground-muted shrink-0" />
+                    <span className="text-foreground flex-1 truncate">
+                      {ev.title}
+                    </span>
+                    {ev.attendees ? (
+                      <span className="font-mono text-[0.7rem] text-foreground-muted">
+                        {ev.attendees}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
     </PanelFrame>
   );

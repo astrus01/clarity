@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, Plus, Search, Trash2, LogIn, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./wordmark";
 import type { ChatSession } from "@/lib/chat/sessions";
@@ -128,8 +128,67 @@ export function ChatSidebar({
           )}
         </nav>
 
+        <GoogleConnect collapsed={collapsed} />
       </div>
     </aside>
+  );
+}
+
+function GoogleConnect({ collapsed }: { collapsed: boolean }) {
+  const [status, setStatus] = useState<
+    { connected: boolean; email?: string; name?: string } | null
+  >(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/google?action=status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setStatus(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const connected = !!status?.connected;
+  const label = connected
+    ? (status?.name ?? status?.email ?? "Connected").split(" ")[0]
+    : "Connect Google";
+
+  return (
+    <div className="p-3 border-t border-border/60">
+      <a
+        href={connected ? "/api/google?action=logout" : "/api/google?action=login"}
+        title={
+          connected
+            ? `Disconnect ${status?.email ?? "Google"}`
+            : "Connect Gmail + Calendar"
+        }
+        className={cn(
+          "relative w-full flex items-center justify-center gap-2.5 h-9 rounded-md border border-border text-sm font-medium transition-colors",
+          "hover:border-[color:var(--primary)]/50 hover:bg-surface-highlight",
+          connected
+            ? "text-foreground"
+            : "text-foreground-muted hover:text-foreground",
+          collapsed ? "px-0" : "px-3",
+        )}
+      >
+        {connected ? (
+          <LogOut className="h-4 w-4 shrink-0 text-emerald-400" />
+        ) : (
+          <LogIn className="h-4 w-4 shrink-0" />
+        )}
+        {!collapsed && <span className="truncate">{label}</span>}
+        {collapsed && connected && (
+          <span
+            aria-hidden
+            className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400"
+          />
+        )}
+      </a>
+    </div>
   );
 }
 

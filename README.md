@@ -23,19 +23,20 @@ Requires Node 18+. Copy `.env.local.example` → `.env.local` and fill in `ANTHR
 |---|---|---|
 | Claude tool-use loop | ✅ Live | `/api/chat` runs up to 6 turns, NDJSON-streamed |
 | 8 panel kinds rendering from live tool output | ✅ Live | news-brief, email-draft, comparison-table, calendar, globe, stock-watch, weather-brief, timeline-plan |
-| Web search | ✅ Live | Exa REST `/search` with page content |
+| Web search (Exa) | ✅ Live | REST `/search` with images + favicons piped into panels |
+| News search (NewsAPI) | ✅ Live | Top-headlines + everything endpoints; urlToImage threaded into news-brief |
+| Page browse | ✅ Live | Real `fetch` + title/description/text extraction |
 | Weather forecast | ✅ Live | Open-Meteo (no API key) |
-| Stock quotes | ✅ Deterministic fixture | NVDA / AAPL / TQQQ / MSFT / GOOGL / TSLA — see *Debug*, below |
-| Gmail list / read | ✅ Mock fixture | 4 synthetic threads, urgency-ranked |
-| Calendar + focus block | ✅ Mock fixture | Today's events + longest-gap algorithm |
+| Stock quotes | ✅ Deterministic fixture | NVDA / AAPL / TQQQ / MSFT / GOOGL / TSLA |
+| Google OAuth | ✅ Live | `/api/google?action=login` → callback → httpOnly cookie |
+| Gmail list / most-urgent / read | ✅ Live when connected | Falls back to fixture inbox if no OAuth cookie |
+| Calendar + focus block | ✅ Live when connected | Falls back to fixture schedule |
 | Voice input (Web Speech API) | ✅ Live | Chrome/Edge only; ⌘K toggle |
 | Streaming tokens + activity feed | ✅ Live | NDJSON events: `text` · `activity` · `panel` · `done` · `error` |
 | Session persistence (localStorage) | ✅ Live | Seeds auto-reinjected on hydrate |
 | Auto-generated chat titles | ✅ Live | First exchange → Claude `/api/title` → session rename |
 | 4 offline seed sessions | ✅ Always | Full panel library demo with no network |
-| Google OAuth | ⚠️ Stub | `app/api/google/route.ts` not wired — mocks used instead |
-| Real Gmail send | ⚠️ Stub | Panel is round-trip-ready but no Google API call |
-| Stagehand live browse | ⚠️ Not used | Exa's built-in `contents.text` covers the need |
+| Browserbase (Stagehand live browse) | ⚠️ Key verified, CDP not wired | `browse_page` fallback uses plain fetch; Browserbase upgrade lives behind a switch |
 
 ---
 
@@ -69,14 +70,22 @@ Every panel component has a typed props contract and a `DEFAULT_DATA` fallback, 
 
 ## Environment
 
-`.env.local` (all optional except the first):
+`.env.local` (only the first is strictly required):
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...          # required
-EXA_API_KEY=...                        # optional — web_search tool gracefully errors without it
-CLARITY_MODEL=claude-haiku-4-5         # optional override
-CLARITY_TITLE_MODEL=claude-haiku-4-5   # optional override
+ANTHROPIC_API_KEY=sk-ant-...               # required
+EXA_API_KEY=...                             # web_search
+NEWS_API_KEY=...                            # news_search (NewsAPI.org)
+GOOGLE_CLIENT_ID=...                        # Google OAuth
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/google/callback
+BROWSERBASE_API_KEY=...                     # optional — key-only verification today
+NEXT_PUBLIC_APP_URL=http://localhost:3000   # used for OAuth redirects
+CLARITY_MODEL=claude-haiku-4-5              # optional override
+CLARITY_TITLE_MODEL=claude-haiku-4-5        # optional override
 ```
+
+Run `npm run smoke` with the dev server running to verify every external service.
 
 ---
 
@@ -96,7 +105,9 @@ These work but your team will want to smoke-test them:
 - Currently **deterministic fixtures** in `lib/tools/finance.ts`. To plug a live source: replace `getQuotes()` body with a `fetch` to Yahoo (`query1.finance.yahoo.com/v7/finance/quote`) or Alpha Vantage. Keep the `Ticker` return type stable — the panel is bound to `{symbol, name, price, change, changePct, series}`.
 
 **Gmail / Calendar**
-- Mocks live in `lib/tools/gmail.ts` and `lib/tools/calendar.ts`. To swap in real OAuth: finish `app/api/google/route.ts`, store tokens in an httpOnly cookie, and replace the fixture reads inside the tool functions. The tool registry and panel data contracts do not need to change.
+- Click **Connect Google** at the bottom of the sidebar → consent to Gmail.readonly + Calendar.readonly → cookie `clarity-google` set. Disconnect via the same button.
+- `lib/tools/gmail.ts` and `lib/tools/calendar.ts` call real Google when the cookie is present; otherwise they return fixture data so seeds and demos still work.
+- If Gmail returns mock data while connected, check the smoke script (`npm run smoke`) — a 401 from Google usually means the access token expired and no refresh token was stored. Hit `?action=logout` and reconnect.
 
 **localStorage persistence**
 - If hydration conflicts appear after a schema change to `Exchange`/`ChatSession`, clear `clarity-chat` in DevTools → Application → Local Storage. Seeds will re-inject automatically.
@@ -122,7 +133,9 @@ clarity/
 │   ├── api/
 │   │   ├── chat/route.ts          # Streaming agent loop + tool dispatch
 │   │   ├── title/route.ts         # Claude-generated chat titles
-│   │   └── google/route.ts        # OAuth stub
+│   │   └── google/
+│   │       ├── route.ts           # login / logout / status
+│   │       └── callback/route.ts  # OAuth code exchange → httpOnly cookie
 │   ├── layout.tsx                 # Theme provider, fonts
 │   └── page.tsx                   # Sidebar + focus canvas
 │
@@ -144,10 +157,13 @@ clarity/
 │   ├── agent/system-prompt.ts     # Panel catalogue + behavioral spec
 │   ├── tools/
 │   │   ├── registry.ts            # TOOLS[] + dispatchTool()
-│   │   ├── exa.ts                 # Web search
+│   │   ├── exa.ts                 # Web search (Exa)
+│   │   ├── news.ts                # Top headlines / everything (NewsAPI)
+│   │   ├── browse.ts              # fetch + HTML → text
 │   │   ├── weather.ts             # Open-Meteo
-│   │   ├── gmail.ts               # Mock inbox
-│   │   ├── calendar.ts            # Mock schedule + focus-block finder
+│   │   ├── google.ts              # OAuth2 client + real Gmail + Calendar
+│   │   ├── gmail.ts               # Real-first, fixture fallback
+│   │   ├── calendar.ts            # Real-first, fixture fallback
 │   │   └── finance.ts             # Stock quote fixtures
 │   └── hooks/
 │       ├── use-chat.ts            # NDJSON parser + store dispatch

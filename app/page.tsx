@@ -10,6 +10,7 @@ import { PromptPill } from "@/components/chat/prompt-pill";
 import { Wordmark } from "@/components/chat/wordmark";
 import { NewsBriefPanel } from "@/components/panels/news-brief";
 import { EmailDraftPanel } from "@/components/panels/email-draft";
+import { InboxPanel } from "@/components/panels/inbox";
 import { ComparisonTablePanel } from "@/components/panels/comparison-table";
 import { CalendarPanel } from "@/components/panels/calendar-panel";
 import { GlobePanel } from "@/components/panels/globe-panel";
@@ -26,6 +27,7 @@ type PanelComponent = React.ComponentType<{ data?: unknown }>;
 const PANEL_MAP: Record<PanelKind, PanelComponent> = {
   "news-brief": NewsBriefPanel as PanelComponent,
   "email-draft": EmailDraftPanel as PanelComponent,
+  inbox: InboxPanel as PanelComponent,
   "comparison-table": ComparisonTablePanel as PanelComponent,
   calendar: CalendarPanel as PanelComponent,
   globe: GlobePanel as PanelComponent,

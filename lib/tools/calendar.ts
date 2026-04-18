@@ -1,3 +1,5 @@
+import { calendarListRange, calendarListToday } from "./google";
+
 export type CalendarEvent = {
   title: string;
   start: string; // "9:00 AM"
@@ -5,8 +7,9 @@ export type CalendarEvent = {
   color?: string;
 };
 
-// Today's fixture calendar. Gap between Coffee (10:00) and Design review (13:30) is 3.5h.
-const TODAY_EVENTS: CalendarEvent[] = [
+// Fixture calendar used when Google is not connected. Intentional gap between
+// 10:00 and 13:30 so find-focus-block has something to demonstrate.
+const FIXTURE_EVENTS: CalendarEvent[] = [
   { title: "Standup", start: "9:00 AM", end: "9:15 AM" },
   { title: "Coffee with Maya", start: "9:30 AM", end: "10:00 AM" },
   { title: "Design review", start: "1:30 PM", end: "2:30 PM" },
@@ -14,8 +17,54 @@ const TODAY_EVENTS: CalendarEvent[] = [
   { title: "Investor call", start: "5:00 PM", end: "5:30 PM" },
 ];
 
-export function listEventsToday(): CalendarEvent[] {
-  return TODAY_EVENTS;
+export async function listEventsToday(): Promise<CalendarEvent[]> {
+  try {
+    const real = await calendarListToday();
+    if (real.length > 0) return real;
+  } catch {
+    // fall through
+  }
+  return FIXTURE_EVENTS;
+}
+
+export type CalendarDay = { label: string; events: CalendarEvent[] };
+
+/**
+ * Multi-day window around today. daysAhead 0..30. Empty days are kept so the
+ * panel can show "Nothing scheduled" instead of collapsing them.
+ */
+export async function listEventsRange(opts: {
+  daysBack?: number;
+  daysAhead?: number;
+}): Promise<CalendarDay[]> {
+  try {
+    const real = await calendarListRange(opts);
+    if (real.length > 0) return real;
+  } catch {
+    // fall through
+  }
+  // Fixture fallback: repeat today's schedule across the requested window.
+  const daysBack = Math.max(0, opts.daysBack ?? 0);
+  const daysAhead = Math.max(0, Math.min(opts.daysAhead ?? 0, 14));
+  const now = new Date();
+  const out: CalendarDay[] = [];
+  for (let i = -daysBack; i <= daysAhead; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const weekday = d.toLocaleDateString([], { weekday: "short" });
+    const month = d.toLocaleDateString([], { month: "short" });
+    const label =
+      i === 0 ? `Today · ${month} ${d.getDate()}` : `${weekday} · ${month} ${d.getDate()}`;
+    // Weekends light, weekdays use the fixture
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    out.push({
+      label,
+      events: isWeekend
+        ? [{ title: "No meetings scheduled", start: "all day", end: "" }]
+        : FIXTURE_EVENTS,
+    });
+  }
+  return out;
 }
 
 function toMinutes(label: string): number {
@@ -37,17 +86,18 @@ function fromMinutes(mins: number): string {
   return `${h}:${m.toString().padStart(2, "0")} ${pm ? "PM" : "AM"}`;
 }
 
-export function findFocusBlock(minDurationMinutes: number): {
+export async function findFocusBlock(minDurationMinutes: number): Promise<{
   start: string;
   end: string;
   minutes: number;
-} | null {
+} | null> {
+  const events = await listEventsToday();
   const DAY_START = 9 * 60;
   const DAY_END = 18 * 60;
-  const busy = TODAY_EVENTS.map((e) => ({
-    start: toMinutes(e.start),
-    end: toMinutes(e.end),
-  })).sort((a, b) => a.start - b.start);
+  const busy = events
+    .map((e) => ({ start: toMinutes(e.start), end: toMinutes(e.end) }))
+    .filter((b) => b.end > b.start)
+    .sort((a, b) => a.start - b.start);
 
   let cursor = DAY_START;
   let best: { start: number; end: number } | null = null;
