@@ -122,17 +122,19 @@ export function CalendarPanel({ data }: { data?: CalendarData }) {
               <span key={h}>{formatHour(h)}</span>
             ))}
           </div>
-          <div className="relative h-11 rounded-md border border-border bg-background/30 overflow-hidden">
+          <div className="relative h-11 rounded-md border border-border bg-background/40 overflow-hidden">
             {eventBlocks.map((b, i) => {
               const left = ((b.sh - DAY_START) / TOTAL_HOURS) * 100;
               const width = ((b.eh - b.sh) / TOTAL_HOURS) * 100;
               return (
                 <div
                   key={i}
-                  className="absolute top-0 bottom-0 bg-surface-highlight border-r border-border"
+                  className="absolute top-0 bottom-0"
                   style={{
                     left: `${Math.max(0, left)}%`,
                     width: `${Math.max(1, width)}%`,
+                    background: "color-mix(in oklch, var(--primary) 38%, transparent)",
+                    boxShadow: "inset -1px 0 0 0 color-mix(in oklch, var(--primary) 60%, transparent)",
                   }}
                   title={b.title}
                 />
@@ -140,10 +142,12 @@ export function CalendarPanel({ data }: { data?: CalendarData }) {
             })}
             {gap && (
               <div
-                className="absolute top-0 bottom-0 bg-primary/15 ring-1 ring-inset ring-[color:var(--primary)]/50 flex items-center px-2"
+                className="absolute inset-y-0 flex items-center px-2 border border-dashed rounded-[2px]"
                 style={{
                   left: `${((gapStartH - DAY_START) / TOTAL_HOURS) * 100}%`,
                   width: `${(gapDur / TOTAL_HOURS) * 100}%`,
+                  borderColor: "color-mix(in oklch, var(--primary) 70%, transparent)",
+                  background: "transparent",
                 }}
               >
                 <span className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-primary">

@@ -9,10 +9,42 @@ export const maxDuration = 60;
 const MODEL = process.env.CLARITY_MODEL || "claude-haiku-4-5";
 const MAX_LOOP_TURNS = 6;
 
+type ChatLocation = {
+  label?: string;
+  place?: string;
+  neighborhood?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  lat?: number;
+  lng?: number;
+  timeZone?: string;
+};
+
 type ChatBody = {
   message?: string;
   history?: Array<{ role: "user" | "assistant"; content: string }>;
+  location?: ChatLocation;
 };
+
+function buildLocationSuffix(loc: ChatLocation | undefined): string {
+  if (!loc) return "";
+  const precise = [loc.place, loc.neighborhood, loc.city, loc.region]
+    .filter(Boolean)
+    .join(", ");
+  const header = precise || loc.label || "unknown";
+  const bits: string[] = [];
+  if (typeof loc.lat === "number" && typeof loc.lng === "number") {
+    bits.push(`coords ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`);
+  }
+  if (loc.timeZone) bits.push(`TZ ${loc.timeZone}`);
+  const meta = bits.length ? ` (${bits.join(" · ")})` : "";
+
+  const anchor =
+    loc.place ?? loc.neighborhood ?? loc.city ?? loc.label ?? "here";
+
+  return `\n\n## User location (granted)\n\nThe user has shared their location: ${header}${meta}. This is specific — treat "${anchor}" as the anchor for any "nearby" question, not just the broader city. Use the location for:\n- Nearby recommendations (restaurants, errands, "what should I eat near me" — skip asking "where are you?"); anchor searches on "${anchor}" specifically\n- Weather defaults when they ask "what's the weather" with no city\n- Timezone for any \`calendar_create_event\` ISO timestamps — if the user has no events to derive TZ from, use the TZ above\n- Travel framing ("from ${anchor}")\nDo not over-cite the coordinates; treat the location as quiet context, not a headline.`;
+}
 
 type ToolUseBlock = {
   type: "tool_use";
@@ -30,6 +62,8 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as ChatBody;
   const message = (body.message ?? "").trim();
   const history = Array.isArray(body.history) ? body.history : [];
+  const systemPrompt =
+    CLARITY_SYSTEM_PROMPT + buildLocationSuffix(body.location);
 
   if (!message) {
     return new Response(JSON.stringify({ error: "message required" }), {
@@ -71,7 +105,7 @@ export async function POST(req: NextRequest) {
           const response = await client.messages.create({
             model: MODEL,
             max_tokens: 1600,
-            system: CLARITY_SYSTEM_PROMPT,
+            system: systemPrompt,
             tools: TOOLS,
             messages,
           });
@@ -107,7 +141,7 @@ export async function POST(req: NextRequest) {
               const forced = await client.messages.create({
                 model: MODEL,
                 max_tokens: 1600,
-                system: CLARITY_SYSTEM_PROMPT,
+                system: systemPrompt,
                 tools: TOOLS,
                 tool_choice: { type: "tool", name: "render_panel" },
                 messages,
@@ -203,7 +237,7 @@ export async function POST(req: NextRequest) {
             const forced = await client.messages.create({
               model: MODEL,
               max_tokens: 1600,
-              system: CLARITY_SYSTEM_PROMPT,
+              system: systemPrompt,
               tools: TOOLS,
               tool_choice: { type: "tool", name: "render_panel" },
               messages,

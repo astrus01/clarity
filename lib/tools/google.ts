@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
 export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
@@ -52,6 +52,11 @@ export async function getAuthedClient() {
     expiry_date: tokens.expiry_date,
   });
   return client;
+}
+
+export async function isGoogleConnected(): Promise<boolean> {
+  const tokens = await readTokenCookie();
+  return !!tokens?.access_token;
 }
 
 // =============================================================================
@@ -319,9 +324,14 @@ export async function gmailSend(opts: {
 // =============================================================================
 
 export type RealCalendarEvent = {
+  id?: string;
   title: string;
   start: string;
   end: string;
+  startIso?: string;
+  endIso?: string;
+  location?: string;
+  timeZone?: string;
 };
 
 function formatTime(iso: string | null | undefined): string {
@@ -334,6 +344,38 @@ function formatTime(iso: string | null | undefined): string {
 export async function calendarListToday(): Promise<RealCalendarEvent[]> {
   const range = await calendarListRange({ daysAhead: 0 });
   return range[0]?.events ?? [];
+}
+
+/**
+ * Raw event list for an exact ISO window. Used for conflict detection on
+ * calendar writes — narrower than `calendarListRange`, which groups by day.
+ */
+export async function calendarEventsInRange(
+  timeMinIso: string,
+  timeMaxIso: string,
+): Promise<RealCalendarEvent[]> {
+  const auth = await getAuthedClient();
+  if (!auth) return [];
+  const calendar = google.calendar({ version: "v3", auth });
+  const res = await calendar.events.list({
+    calendarId: "primary",
+    timeMin: timeMinIso,
+    timeMax: timeMaxIso,
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 50,
+  });
+  const items = (res.data.items ?? []).filter((e) => e.start?.dateTime);
+  return items.map((e) => ({
+    id: e.id ?? undefined,
+    title: e.summary ?? "(untitled)",
+    start: formatTime(e.start?.dateTime),
+    end: formatTime(e.end?.dateTime),
+    startIso: e.start?.dateTime ?? undefined,
+    endIso: e.end?.dateTime ?? undefined,
+    location: e.location ?? undefined,
+    timeZone: e.start?.timeZone ?? e.end?.timeZone ?? undefined,
+  }));
 }
 
 export type CalendarDay = {
@@ -385,9 +427,14 @@ export async function calendarListRange(opts: {
     if (isNaN(d.getTime())) continue;
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const ev: RealCalendarEvent = {
+      id: e.id ?? undefined,
       title: e.summary ?? "(untitled)",
       start: e.start?.dateTime ? formatTime(e.start.dateTime) : "all day",
       end: e.end?.dateTime ? formatTime(e.end.dateTime) : "",
+      startIso: e.start?.dateTime ?? undefined,
+      endIso: e.end?.dateTime ?? undefined,
+      location: e.location ?? undefined,
+      timeZone: e.start?.timeZone ?? e.end?.timeZone ?? undefined,
     };
     const bucket = byDay.get(key) ?? [];
     bucket.push(ev);
@@ -406,6 +453,202 @@ export async function calendarListRange(opts: {
     });
   }
   return days;
+}
+
+export type CalendarInsertResult =
+  | {
+      created: true;
+      id: string;
+      htmlLink?: string;
+      title: string;
+      startIso: string;
+      endIso: string;
+      location?: string;
+    }
+  | {
+      created: false;
+      reason: "not-connected" | "forbidden" | "error";
+      error?: string;
+    };
+
+export async function calendarInsertEvent(opts: {
+  title: string;
+  startIso: string;
+  endIso: string;
+  location?: string;
+  description?: string;
+  timeZone?: string;
+}): Promise<CalendarInsertResult> {
+  const auth = await getAuthedClient();
+  if (!auth) return { created: false, reason: "not-connected" };
+  try {
+    const calendar = google.calendar({ version: "v3", auth });
+    const res = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: {
+        summary: opts.title,
+        location: opts.location,
+        description: opts.description,
+        start: { dateTime: opts.startIso, timeZone: opts.timeZone },
+        end: { dateTime: opts.endIso, timeZone: opts.timeZone },
+      },
+    });
+    const d = res.data;
+    return {
+      created: true,
+      id: d.id ?? "",
+      htmlLink: d.htmlLink ?? undefined,
+      title: d.summary ?? opts.title,
+      startIso: d.start?.dateTime ?? opts.startIso,
+      endIso: d.end?.dateTime ?? opts.endIso,
+      location: d.location ?? opts.location,
+    };
+  } catch (err) {
+    const e = err as { code?: number; status?: number; message?: string };
+    const code = e.code ?? e.status ?? 0;
+    if (code === 401 || code === 403) {
+      return {
+        created: false,
+        reason: "forbidden",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    return {
+      created: false,
+      reason: "error",
+      error: e.message ?? String(err),
+    };
+  }
+}
+
+export type CalendarUpdateResult =
+  | {
+      updated: true;
+      id: string;
+      htmlLink?: string;
+      title: string;
+      startIso: string;
+      endIso: string;
+      location?: string;
+    }
+  | {
+      updated: false;
+      reason: "not-connected" | "not-found" | "forbidden" | "error";
+      error?: string;
+    };
+
+/**
+ * Patch an existing primary-calendar event in place. Only the fields provided
+ * are sent to Google — everything else (attendees, recurrence, description)
+ * is left untouched. Preferred over delete+create because it keeps the event
+ * ID stable and doesn't send cancellation notices to attendees.
+ */
+export async function calendarPatchEvent(opts: {
+  id: string;
+  title?: string;
+  startIso?: string;
+  endIso?: string;
+  location?: string;
+  description?: string;
+  timeZone?: string;
+}): Promise<CalendarUpdateResult> {
+  const auth = await getAuthedClient();
+  if (!auth) return { updated: false, reason: "not-connected" };
+  try {
+    const calendar = google.calendar({ version: "v3", auth });
+    const patch: Record<string, unknown> = {};
+    if (opts.title !== undefined) patch.summary = opts.title;
+    if (opts.location !== undefined) patch.location = opts.location;
+    if (opts.description !== undefined) patch.description = opts.description;
+    if (opts.startIso !== undefined) {
+      patch.start = { dateTime: opts.startIso, timeZone: opts.timeZone };
+    }
+    if (opts.endIso !== undefined) {
+      patch.end = { dateTime: opts.endIso, timeZone: opts.timeZone };
+    }
+    const res = await calendar.events.patch({
+      calendarId: "primary",
+      eventId: opts.id,
+      requestBody: patch,
+    });
+    const d = res.data;
+    return {
+      updated: true,
+      id: d.id ?? opts.id,
+      htmlLink: d.htmlLink ?? undefined,
+      title: d.summary ?? opts.title ?? "",
+      startIso: d.start?.dateTime ?? opts.startIso ?? "",
+      endIso: d.end?.dateTime ?? opts.endIso ?? "",
+      location: d.location ?? opts.location,
+    };
+  } catch (err) {
+    const e = err as { code?: number; status?: number; message?: string };
+    const code = e.code ?? e.status ?? 0;
+    if (code === 404 || code === 410) {
+      return {
+        updated: false,
+        reason: "not-found",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    if (code === 401 || code === 403) {
+      return {
+        updated: false,
+        reason: "forbidden",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    return {
+      updated: false,
+      reason: "error",
+      error: e.message ?? String(err),
+    };
+  }
+}
+
+export type CalendarDeleteResult =
+  | { deleted: true; id: string }
+  | {
+      deleted: false;
+      reason: "not-connected" | "not-found" | "forbidden" | "error";
+      error?: string;
+    };
+
+export async function calendarDeleteEvent(
+  id: string,
+): Promise<CalendarDeleteResult> {
+  const auth = await getAuthedClient();
+  if (!auth) return { deleted: false, reason: "not-connected" };
+  try {
+    const calendar = google.calendar({ version: "v3", auth });
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId: id,
+    });
+    return { deleted: true, id };
+  } catch (err) {
+    const e = err as { code?: number; status?: number; message?: string };
+    const code = e.code ?? e.status ?? 0;
+    if (code === 404 || code === 410) {
+      return {
+        deleted: false,
+        reason: "not-found",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    if (code === 401 || code === 403) {
+      return {
+        deleted: false,
+        reason: "forbidden",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    return {
+      deleted: false,
+      reason: "error",
+      error: e.message ?? String(err),
+    };
+  }
 }
 
 function labelForDate(d: Date, isToday: boolean): string {

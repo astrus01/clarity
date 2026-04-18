@@ -11,7 +11,10 @@ export type PanelKind =
   | "meal-pick"
   | "fridge-scan"
   | "nutrition-log"
-  | "on-the-road";
+  | "on-the-road"
+  | "meal-options"
+  | "map"
+  | "meal-plan";
 
 export type ExchangeStatus = "pending" | "streaming" | "complete" | "error";
 
@@ -186,6 +189,94 @@ export const SEED_SESSIONS: ChatSession[] = [
           { tool: "claude.recommend", detail: "protein + slow carbs" },
         ],
         timestamp: "Today · 1:42 PM",
+      },
+    ],
+  },
+  {
+    id: "map-demo",
+    title: "Lunch spots near Georgia Tech",
+    subtitle: "Today · map compare",
+    seeded: true,
+    exchanges: [
+      {
+        id: "ex-map",
+        prompt: "Compare lunch spots within walking distance of Georgia Tech.",
+        gist: "4 spots · map compare",
+        panelKind: "map",
+        panelData: {
+          eyebrow: "Near Georgia Tech · lunch",
+          title: "Four spots within a 10-min walk",
+          summary:
+            "Ranked by rating · tap a pin for hours and directions.",
+          center: { lat: 33.7756, lng: -84.3963, zoom: 15 },
+          userLocation: {
+            lat: 33.7756,
+            lng: -84.3963,
+            label: "Georgia Tech",
+          },
+          markers: [
+            {
+              id: "1",
+              label: "Tin Drum Asian Kitchen",
+              description: "Fast pan-Asian · ~$12 · 4.4★ · 4 min walk",
+              url: "https://www.google.com/maps/search/Tin+Drum+Asian+Kitchen+Georgia+Tech",
+              lat: 33.7766,
+              lng: -84.3987,
+            },
+            {
+              id: "2",
+              label: "Ferst Place",
+              description: "Campus dining hall · ~$10 · 2 min walk",
+              lat: 33.7749,
+              lng: -84.3966,
+            },
+            {
+              id: "3",
+              label: "Moe's Original BBQ",
+              description: "Southern BBQ · ~$14 · 4.3★ · 6 min walk",
+              url: "https://www.google.com/maps/search/Moes+Original+BBQ+Atlanta",
+              lat: 33.7747,
+              lng: -84.3911,
+            },
+            {
+              id: "4",
+              label: "Rocky Mountain Pizza",
+              description: "Slice shop · ~$6 · 4.1★ · 5 min walk",
+              lat: 33.7770,
+              lng: -84.3950,
+            },
+          ],
+          footer: {
+            anchorLabel: "From Georgia Tech",
+          },
+        },
+        activity: [
+          { tool: "location.read", detail: "Georgia Tech · granted" },
+          { tool: "places.search", detail: "4 spots · ≤10 min walk" },
+          { tool: "render_panel", detail: "kind: map" },
+        ],
+        timestamp: "Today · 12:15 PM",
+      },
+    ],
+  },
+  {
+    id: "meal-options-demo",
+    title: "35 min before my 2:00",
+    subtitle: "Today · nearby meal options",
+    seeded: true,
+    exchanges: [
+      {
+        id: "ex-meal-options",
+        prompt:
+          "I have 35 minutes before my 2 PM client meeting — what should I eat nearby?",
+        gist: "Flatiron · walking · 35-min window",
+        panelKind: "meal-options",
+        activity: [
+          { tool: "calendar.today", detail: "next event: Client review · 2:00 PM" },
+          { tool: "places.search", detail: "4 viable spots within 6 min walk" },
+          { tool: "nutrition.estimate", detail: "macros for top 4 picks" },
+        ],
+        timestamp: "Today · 1:25 PM",
       },
     ],
   },

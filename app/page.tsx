@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Newspaper, GitCompare, Utensils, Plane, CalendarClock } from "lucide-react";
+import { Newspaper, GitCompare, Utensils, Plane, CalendarClock, MapPin, ChefHat } from "lucide-react";
 import { InputBar } from "@/components/chat/input-bar";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -21,6 +21,9 @@ import { MealPickPanel } from "@/components/panels/meal-pick";
 import { FridgeScanPanel } from "@/components/panels/fridge-scan";
 import { NutritionLogPanel } from "@/components/panels/nutrition-log";
 import { OnTheRoadPanel } from "@/components/panels/on-the-road";
+import { MealOptionsPanel } from "@/components/panels/meal-options";
+import { MapPanel } from "@/components/panels/map-panel";
+import { MealPlanPanel } from "@/components/panels/meal-plan-panel";
 import type { ChatSession, Exchange, PanelKind } from "@/lib/chat/sessions";
 import { useChatStore } from "@/lib/chat/store";
 import { useClarityChat } from "@/lib/hooks/use-chat";
@@ -42,6 +45,9 @@ const PANEL_MAP: Record<PanelKind, PanelComponent> = {
   "fridge-scan": FridgeScanPanel as PanelComponent,
   "nutrition-log": NutritionLogPanel as PanelComponent,
   "on-the-road": OnTheRoadPanel as PanelComponent,
+  "meal-options": MealOptionsPanel as PanelComponent,
+  map: MapPanel as PanelComponent,
+  "meal-plan": MealPlanPanel as PanelComponent,
 };
 
 const SUGGESTED: { icon: typeof Newspaper; label: string; prompt: string }[] = [
@@ -57,13 +63,26 @@ const SUGGESTED: { icon: typeof Newspaper; label: string; prompt: string }[] = [
   },
   {
     icon: CalendarClock,
-    label: "My day at a glance",
-    prompt: "What's on my calendar today?",
+    label: "Block off lunch + pick a spot",
+    prompt:
+      "Block off 45 minutes for lunch when I'm free today, then recommend a nearby spot.",
   },
   {
     icon: Utensils,
     label: "What should I eat now?",
     prompt: "What should I eat right now?",
+  },
+  {
+    icon: MapPin,
+    label: "Food spots near me",
+    prompt:
+      "Show me four lunch spots within walking distance of me on a map.",
+  },
+  {
+    icon: ChefHat,
+    label: "Plan my meals for Tuesday",
+    prompt:
+      "Plan my meals for Tuesday — look at my schedule, see what I've already had for breakfast and lunch, tailor dinner to what I need, and show me grocery deals nearby.",
   },
   {
     icon: Plane,
@@ -427,12 +446,25 @@ function ExchangeBlock({ index, exchange }: { index: number; exchange: Exchange 
         <AgentActivity lines={exchange.activity} />
       )}
 
-      {/* Live status */}
-      {!Panel && exchange.status === "streaming" && !exchange.text && (
-        <StreamingHint />
-      )}
+      {/* Live status — thinking before any tool has fired */}
+      {!Panel &&
+        exchange.status === "streaming" &&
+        !exchange.text &&
+        (!exchange.activity || exchange.activity.length === 0) && (
+          <StreamingHint />
+        )}
 
-      {/* Text body (live streaming) */}
+      {/* Panel composing — tools have fired, waiting on the render_panel emission */}
+      {!Panel &&
+        exchange.status === "streaming" &&
+        exchange.activity &&
+        exchange.activity.length > 0 && (
+          <PanelComposingHint
+            rendering={exchange.activity.some((a) => a.tool === "render_panel")}
+          />
+        )}
+
+      {/* Text body (live streaming) — full body when there's no panel */}
       {!Panel && exchange.text && (
         <div
           className={cn(
@@ -452,6 +484,22 @@ function ExchangeBlock({ index, exchange }: { index: number; exchange: Exchange 
           <Panel data={exchange.panelData} />
         </div>
       )}
+
+      {/* Caption — the model's one-line follow-up written alongside / after
+          the panel. Rendered below in muted italic so the panel stays the
+          focus but confirmations (e.g. "Added to your calendar · 11:30 AM")
+          don't get dropped. */}
+      {Panel && exchange.text && (
+        <p
+          className={cn(
+            "text-foreground-muted italic text-[0.95rem] leading-relaxed max-w-[68ch] whitespace-pre-wrap",
+            exchange.status === "error" && "text-red-400 not-italic",
+          )}
+        >
+          {exchange.text}
+          {exchange.status === "streaming" && <Caret />}
+        </p>
+      )}
     </section>
   );
 }
@@ -467,6 +515,45 @@ function StreamingHint() {
         style={{ animation: "pulse 1.4s ease-in-out infinite" }}
       />
       claude.haiku · composing…
+    </div>
+  );
+}
+
+function PanelComposingHint({ rendering }: { rendering: boolean }) {
+  const label = rendering ? "rendering panel…" : "composing panel…";
+  return (
+    <div className="flex flex-col gap-3" aria-live="polite">
+      <div
+        className="font-mono text-[0.75rem] italic text-foreground-muted flex items-center gap-2"
+      >
+        <span
+          className="h-1.5 w-1.5 rounded-full bg-primary"
+          style={{ animation: "pulse 1.4s ease-in-out infinite" }}
+        />
+        {label}
+      </div>
+      <div
+        aria-hidden
+        className="relative w-full max-w-[44rem] overflow-hidden rounded-lg border border-border bg-surface/60"
+      >
+        <div className="flex flex-col gap-3 p-5 pb-6">
+          <div className="h-3 w-24 rounded-sm bg-surface-highlight" />
+          <div className="h-5 w-3/5 rounded-sm bg-surface-highlight" />
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="h-3 w-11/12 rounded-sm bg-surface-highlight/80" />
+            <div className="h-3 w-9/12 rounded-sm bg-surface-highlight/80" />
+            <div className="h-3 w-10/12 rounded-sm bg-surface-highlight/80" />
+          </div>
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%)",
+            animation: "shimmer 1.8s linear infinite",
+          }}
+        />
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, Plus, Search, Trash2, LogIn, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./wordmark";
+import { LocationPill } from "./location-pill";
 import type { ChatSession } from "@/lib/chat/sessions";
 
 export function ChatSidebar({
@@ -24,11 +25,12 @@ export function ChatSidebar({
   onToggle: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = sessions.filter((s) =>
-    s.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const trimmedQuery = query.trim();
+  const results = sessions
+    .map((s) => matchSession(s, trimmedQuery))
+    .filter((r): r is SessionMatch => r !== null);
 
-  const grouped = groupByDay(filtered);
+  const grouped = groupByDay(results);
 
   return (
     <aside
@@ -108,18 +110,19 @@ export function ChatSidebar({
                   >
                     {label}
                   </div>
-                  {items.map((s) => (
+                  {items.map((m) => (
                     <SessionRow
-                      key={s.id}
-                      session={s}
-                      active={s.id === activeId}
-                      onClick={() => onSelect(s.id)}
-                      onDelete={() => onDelete(s.id)}
+                      key={m.session.id}
+                      session={m.session}
+                      snippet={m.snippet}
+                      active={m.session.id === activeId}
+                      onClick={() => onSelect(m.session.id)}
+                      onDelete={() => onDelete(m.session.id)}
                     />
                   ))}
                 </div>
               ))}
-              {filtered.length === 0 && (
+              {results.length === 0 && (
                 <div className="px-2 py-8 text-center text-sm text-foreground-muted italic">
                   No chats match "{query}"
                 </div>
@@ -128,6 +131,9 @@ export function ChatSidebar({
           )}
         </nav>
 
+        <div className="px-3 pt-3">
+          <LocationPill collapsed={collapsed} />
+        </div>
         <GoogleConnect collapsed={collapsed} />
       </div>
     </aside>
@@ -194,11 +200,13 @@ function GoogleConnect({ collapsed }: { collapsed: boolean }) {
 
 function SessionRow({
   session,
+  snippet,
   active,
   onClick,
   onDelete,
 }: {
   session: ChatSession;
+  snippet?: string;
   active: boolean;
   onClick: () => void;
   onDelete: () => void;
@@ -219,6 +227,16 @@ function SessionRow({
         <div className="text-[0.85rem] leading-snug line-clamp-1">
           {session.title}
         </div>
+        {snippet && (
+          <div
+            className={cn(
+              "text-[0.72rem] leading-snug line-clamp-1 italic transition-colors",
+              active ? "text-foreground/70" : "text-foreground-muted/80",
+            )}
+          >
+            {snippet}
+          </div>
+        )}
         <div
           className={cn(
             "font-mono text-[0.65rem] tracking-[0.04em] transition-colors",
@@ -278,11 +296,49 @@ function CollapsedList({
   );
 }
 
-function groupByDay(sessions: ChatSession[]): [string, ChatSession[]][] {
-  const groups: Record<string, ChatSession[]> = {};
-  for (const s of sessions) {
-    const key = s.subtitle.split("·")[0].trim();
-    (groups[key] ||= []).push(s);
+type SessionMatch = { session: ChatSession; snippet?: string };
+
+function groupByDay(matches: SessionMatch[]): [string, SessionMatch[]][] {
+  const groups: Record<string, SessionMatch[]> = {};
+  for (const m of matches) {
+    const key = m.session.subtitle.split("·")[0].trim();
+    (groups[key] ||= []).push(m);
   }
   return Object.entries(groups);
+}
+
+/**
+ * Match a query against a session's title, subtitle, and each exchange
+ * (prompt, gist, streamed text). Returns null if no match. When the title
+ * itself contains the query we skip the snippet so the row stays clean.
+ */
+function matchSession(session: ChatSession, query: string): SessionMatch | null {
+  if (!query) return { session };
+  const q = query.toLowerCase();
+
+  if (session.title.toLowerCase().includes(q)) return { session };
+  if (session.subtitle.toLowerCase().includes(q)) {
+    return { session, snippet: session.subtitle };
+  }
+
+  for (const ex of session.exchanges) {
+    const hit =
+      firstMatch(ex.prompt, q) ??
+      firstMatch(ex.gist, q) ??
+      firstMatch(ex.text, q);
+    if (hit) return { session, snippet: hit };
+  }
+  return null;
+}
+
+function firstMatch(text: string | undefined, q: string): string | undefined {
+  if (!text) return undefined;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return undefined;
+  // Window ~60 chars around the hit.
+  const start = Math.max(0, idx - 24);
+  const end = Math.min(text.length, idx + q.length + 36);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return (prefix + text.slice(start, end) + suffix).replace(/\s+/g, " ");
 }

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useChatStore, newExchangeId, nowTimestamp } from "@/lib/chat/store";
 import type { ChatSession, PanelKind, ActivityLine } from "@/lib/chat/sessions";
+import { readLocationSnapshot } from "@/lib/hooks/use-location";
 
 type ChatEvent =
   | { type: "text"; text: string }
@@ -75,10 +76,26 @@ export function useClarityChat() {
     const activity: ActivityLine[] = [];
 
     try {
+      const loc = readLocationSnapshot();
+      const location =
+        loc.status === "granted" && loc.coords
+          ? {
+              label: loc.label,
+              place: loc.place,
+              neighborhood: loc.neighborhood,
+              city: loc.city,
+              region: loc.region,
+              country: loc.country,
+              lat: loc.coords.lat,
+              lng: loc.coords.lng,
+              timeZone: loc.timeZone,
+            }
+          : undefined;
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify({ message: trimmed, history, location }),
         signal: ctrl.signal,
       });
 
