@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 
 export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
@@ -252,6 +253,65 @@ export async function gmailMostUrgent(): Promise<RealGmailThread | null> {
   // Upgrade to full body for the winner.
   const full = await gmailRead(top.id);
   return full ?? top;
+}
+
+function encodeHeader(value: string): string {
+  // Only apply RFC 2047 encoding if the value contains non-ASCII characters.
+  if (/^[\x20-\x7E]*$/.test(value)) return value;
+  const b64 = Buffer.from(value, "utf8").toString("base64");
+  return `=?UTF-8?B?${b64}?=`;
+}
+
+export type GmailSendResult =
+  | { sent: true; id?: string }
+  | { sent: false; reason: "not-connected" | "forbidden" | "error"; error?: string };
+
+export async function gmailSend(opts: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<GmailSendResult> {
+  const auth = await getAuthedClient();
+  if (!auth) return { sent: false, reason: "not-connected" };
+
+  const headers = [
+    `To: ${opts.to}`,
+    `Subject: ${encodeHeader(opts.subject)}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+  ].join("\r\n");
+
+  const message = `${headers}\r\n\r\n${opts.body}`;
+  const raw = Buffer.from(message, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  try {
+    const gmail = google.gmail({ version: "v1", auth });
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: { raw },
+    });
+    return { sent: true, id: res.data.id ?? undefined };
+  } catch (err) {
+    const e = err as { code?: number; status?: number; message?: string };
+    const code = e.code ?? e.status ?? 0;
+    if (code === 401 || code === 403) {
+      return {
+        sent: false,
+        reason: "forbidden",
+        error: e.message ?? `HTTP ${code}`,
+      };
+    }
+    return {
+      sent: false,
+      reason: "error",
+      error: e.message ?? String(err),
+    };
+  }
 }
 
 // =============================================================================

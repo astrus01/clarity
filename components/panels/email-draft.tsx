@@ -38,7 +38,14 @@ function extractEmail(from: string): string | null {
   return bare?.[0] ?? null;
 }
 
-type SendState = "idle" | "opening" | "sent" | "no-address";
+type SendState =
+  | "idle"
+  | "sending"
+  | "sent"
+  | "mailto"
+  | "needs-reconnect"
+  | "no-address"
+  | "failed";
 
 export function EmailDraftPanel({ data }: { data?: EmailDraftData }) {
   const d = data ?? DEFAULT_DATA;
@@ -94,24 +101,62 @@ export function EmailDraftPanel({ data }: { data?: EmailDraftData }) {
     }
   }
 
-  function handleSend() {
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  function openMailto() {
+    if (!recipientEmail) return;
+    const params = new URLSearchParams({ subject, body });
+    const qs = params.toString().replace(/\+/g, "%20");
+    const href = `mailto:${recipientEmail}?${qs}`;
+    if (typeof window !== "undefined") {
+      window.location.href = href;
+    }
+  }
+
+  async function handleSend() {
     if (!recipientEmail) {
       setSendState("no-address");
       return;
     }
-    const params = new URLSearchParams({
-      subject,
-      body,
-    });
-    // URLSearchParams encodes + as space-substitute; mail clients want %20. Swap.
-    const qs = params.toString().replace(/\+/g, "%20");
-    const href = `mailto:${recipientEmail}?${qs}`;
-    setSendState("opening");
-    if (typeof window !== "undefined") {
-      window.location.href = href;
+    setSendError(null);
+    setSendState("sending");
+    try {
+      const res = await fetch("/api/gmail/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: recipientEmail, subject, body }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        sent?: boolean;
+        notConnected?: boolean;
+        needsReconnect?: boolean;
+        error?: string;
+      };
+
+      if (res.ok && data.sent) {
+        setSendState("sent");
+        return;
+      }
+
+      if (data.notConnected) {
+        // Not connected — open the user's mail client instead.
+        openMailto();
+        setSendState("mailto");
+        return;
+      }
+
+      if (data.needsReconnect) {
+        setSendState("needs-reconnect");
+        setSendError(data.error ?? "Reconnect Google to grant send permission.");
+        return;
+      }
+
+      setSendState("failed");
+      setSendError(data.error ?? `HTTP ${res.status}`);
+    } catch (err) {
+      setSendState("failed");
+      setSendError(err instanceof Error ? err.message : "Network error");
     }
-    // After a short beat, show "sent" feedback. Real delivery is out-of-band.
-    window.setTimeout(() => setSendState("sent"), 600);
   }
 
   return (
@@ -203,7 +248,31 @@ export function EmailDraftPanel({ data }: { data?: EmailDraftData }) {
 
         {sendState === "no-address" && (
           <div className="text-xs text-amber-400 font-mono">
-            No email address found in "To" field — can't open mail client.
+            No email address found in "To" field — can't send.
+          </div>
+        )}
+
+        {sendState === "needs-reconnect" && (
+          <div className="text-xs text-amber-400 font-mono flex items-center gap-2 flex-wrap">
+            <span>{sendError ?? "Reconnect Google to grant send permission."}</span>
+            <a
+              href="/api/google?action=login"
+              className="underline hover:text-amber-300"
+            >
+              Reconnect Google →
+            </a>
+          </div>
+        )}
+
+        {sendState === "failed" && (
+          <div className="text-xs text-red-400 font-mono">
+            Send failed: {sendError ?? "unknown error"}
+          </div>
+        )}
+
+        {sendState === "mailto" && (
+          <div className="text-xs text-foreground-muted font-mono">
+            Google not connected — opened in your mail client instead.
           </div>
         )}
 
@@ -222,23 +291,30 @@ export function EmailDraftPanel({ data }: { data?: EmailDraftData }) {
           </button>
           <button
             onClick={handleSend}
-            disabled={regenerating || sendState === "opening"}
+            disabled={regenerating || sendState === "sending"}
             className={cn(
               "inline-flex items-center gap-2 h-10 rounded-md px-5 text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-60",
               sendState === "sent"
                 ? "bg-emerald-500/90 text-background"
-                : "bg-primary text-background hover:opacity-90",
+                : sendState === "mailto"
+                  ? "bg-surface text-foreground border border-border"
+                  : "bg-primary text-background hover:opacity-90",
             )}
           >
-            {sendState === "sent" ? (
+            {sendState === "sending" ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Sending…
+              </>
+            ) : sendState === "sent" ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Sent via Gmail
+              </>
+            ) : sendState === "mailto" ? (
               <>
                 <Check className="h-3.5 w-3.5" />
                 Opened in mail client
-              </>
-            ) : sendState === "opening" ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Opening…
               </>
             ) : (
               <>
