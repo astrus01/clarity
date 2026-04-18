@@ -6,6 +6,7 @@ import { listEventsRange, listEventsToday, findFocusBlock } from "./calendar";
 import { getQuotes } from "./finance";
 import { searchNews, type NewsCategory } from "./news";
 import { browsePage } from "./browse";
+import { estimateNutrition } from "./nutrition";
 import type { PanelKind } from "@/lib/chat/sessions";
 
 export type ToolDispatchResult =
@@ -133,13 +134,29 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "stock_quotes",
     description:
-      "Quote data for a list of ticker symbols: price, change, change percent, 8-point series.",
+      "Quote data for a list of ticker symbols: price, change, change percent, 8-point series. Legacy — rarely needed in the health-coach product.",
     input_schema: {
       type: "object",
       properties: {
         symbols: { type: "array", items: { type: "string" } },
       },
       required: ["symbols"],
+    },
+  },
+  {
+    name: "nutrition_estimate",
+    description:
+      "Estimate calories, protein, carbs, fat, fiber, sodium for one or more foods. Pass each food as a plain-English description ('SmokeShack burger single with regular fries', 'grilled salmon poke bowl with brown rice'). Returns per-item macros plus a combined total and an optional 'watchOut' note when a macro is high. Use this any time you need to put numbers on a food the user mentions or recommends.",
+    input_schema: {
+      type: "object",
+      properties: {
+        foods: {
+          type: "array",
+          items: { type: "string" },
+          description: "One or more food/meal descriptions.",
+        },
+      },
+      required: ["foods"],
     },
   },
   {
@@ -152,15 +169,19 @@ export const TOOLS: ToolSpec[] = [
         kind: {
           type: "string",
           enum: [
+            "meal-pick",
+            "fridge-scan",
+            "nutrition-log",
+            "on-the-road",
             "news-brief",
             "email-draft",
             "inbox",
             "comparison-table",
             "calendar",
-            "globe",
-            "stock-watch",
             "weather-brief",
             "timeline-plan",
+            "globe",
+            "stock-watch",
           ],
         },
         data: {
@@ -287,6 +308,27 @@ export async function dispatchTool(
       return { kind: "text", content: JSON.stringify(getQuotes(symbols)) };
     }
 
+    case "nutrition_estimate": {
+      const foods = Array.isArray(input.foods)
+        ? (input.foods as unknown[]).map(String).filter(Boolean)
+        : [];
+      if (foods.length === 0) {
+        return {
+          kind: "text",
+          content: "nutrition_estimate needs a non-empty 'foods' array.",
+        };
+      }
+      const result = await estimateNutrition(foods);
+      if (!result) {
+        return {
+          kind: "text",
+          content:
+            "nutrition_estimate failed (missing ANTHROPIC_API_KEY or parse error). Proceed with your own best-guess macros.",
+        };
+      }
+      return { kind: "text", content: JSON.stringify(result) };
+    }
+
     case "render_panel": {
       const kind = String(input.kind ?? "") as PanelKind;
       const data = (input.data ?? {}) as unknown;
@@ -333,6 +375,10 @@ export function shortDetailFor(
     case "stock_quotes":
       return Array.isArray(input.symbols)
         ? (input.symbols as unknown[]).slice(0, 6).join(" · ")
+        : "";
+    case "nutrition_estimate":
+      return Array.isArray(input.foods)
+        ? `${(input.foods as unknown[]).length} item${(input.foods as unknown[]).length === 1 ? "" : "s"}`
         : "";
     case "render_panel":
       return `kind: ${input.kind}`;

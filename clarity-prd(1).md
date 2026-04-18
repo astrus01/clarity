@@ -1,46 +1,48 @@
 # Clarity — Product Requirements Document
-### *The Internet, Rendered for You*
-**Version:** 3.0 (GenUIne-Optimized) | **Hackathon:** 5-Hour Sprint | **Audience:** NBC News Demo
+### *Healthy isn't a plan. It's a real-time decision.*
+**Version:** 4.0 (Health Coach Pivot) | **Hackathon:** 5-Hour Sprint | **Audience:** NBC News Demo
 
 ---
 
 ## 1. Executive Summary
 
-**Clarity** is a next-generation AI chat interface that replaces the open web with a single conversation. Instead of returning links and text, Clarity actually *goes to the web* on your behalf — browsing, researching, reading your email, checking your calendar — and renders the results back as beautiful, interactive UI panels directly in the chat thread.
+**Clarity** is a real-time health copilot for people whose lives don't fit a meal plan. Instead of generic advice like "eat more protein" or "cut carbs," Clarity looks at where you are, what time it is, what's on your calendar, what's in your fridge, and what you've already eaten — and tells you the single smart move for *this* meal. The answer comes back as an interactive panel, not a paragraph.
 
-It builds on the foundational concepts of GenUIne but with three major improvements:
-1. **Claude-native architecture** (Anthropic API powers both reasoning and browser automation via Stagehand)
-2. **Production-grade UI polish** matching genUIne's "refined dark intelligence" aesthetic
-3. **Expanded generative component library** inspired by genUIne's robust registry
+It's built for the national correspondent who is standing in a LaGuardia concourse with 80 minutes until a red-eye, for the parent staring into the fridge at 9pm after soccer practice, for the shift worker whose 3am "dinner" doesn't show up in any wellness app's template. Clarity treats every meal as a decision made under real-world constraints — not a box to check against an idealized daily total.
 
-The key insight: the problem with AI chatbots isn't the AI — it's that they give you *words* when you need *interfaces*. Clarity fixes that. Ask anything. Get a living, interactive panel back.
+Clarity's differentiator is the generative UI: every response is a purpose-built, interactive card. "What should I eat right now?" renders a `meal-pick` panel with the recommendation, the reason, the macros, and two alternates. "What can I make with eggs and leftover rice?" renders a `fridge-scan` with three 15-minute dinners. "I'm flying LAX to Heathrow tonight" renders an `on-the-road` plan that spans airport, plane, and arrival.
 
-**Tagline:** *"Don't browse the internet. Have Clarity bring it to you."*
+**Tagline:** *"Healthy isn't a plan. It's a real-time decision."*
 
 ---
 
 ## 2. Problem Statement
 
-Current AI chat tools are still fundamentally text-first. They describe things instead of showing them. They tell you a flight price instead of rendering a booking card. They summarize a news story instead of showing you a visual brief with sentiment, sources, and context. They say "you have 3 emails" instead of showing you those emails, inline, ready to act on.
+Nutrition advice breaks down the moment a real life touches it.
 
-Meanwhile, traditional browsers require you to do all the navigating, parsing, and synthesizing yourself — across 10 tabs, three apps, and 45 minutes of your morning.
+- Generic rules ("eat more protein," "limit sodium," "fill half your plate with vegetables") don't tell anyone what to order at 11pm from a hotel room service menu, or what to cook with the three things left in the fridge on a Sunday night.
+- Calorie-counting apps demand log-everything discipline that no traveling professional sustains. The result is a graveyard of abandoned streaks.
+- Meal-plan services assume a stable week, a predictable grocery run, and a kitchen you'll be standing in at 6:30pm every weekday. Correspondents, nurses, parents of young kids, and anyone on shift work fit none of those assumptions.
+- Restaurant-recommendation tools optimize for taste or price, not "protein-forward, low sodium, eats in under 15 minutes because I have a live hit at 4pm."
 
-Clarity closes this gap using a **mature generative UI engine** that renders JSONL specifications into fully interactive React components, inspired by genUIne's production-grade approach.
+The gap is a coach that *compresses* decisions instead of listing options. The user doesn't want a 40-result search. They want to know what to eat next, and why, in the context of where they are and what's coming up.
+
+Clarity closes that gap by putting the decision on a panel: one lead recommendation, a short reason, macros, a couple of backups, and — critically — context about the rest of the day so the user trusts the call.
 
 ---
 
 ## 3. Product Vision & Identity
 
-**Clarity is an AI chat interface where every response is a living, interactive UI component.**
+**Clarity is an AI chat interface that removes the guesswork from staying healthy in real life.**
 
-- You *converse* with it naturally — typed or spoken
-- It *browses* the web, reads your inbox, checks your calendar, researches topics
-- It *renders* the results as purpose-built interactive panels in the conversation thread
-- It *acts* when you confirm — send the email, book the slot, save the research
+- You *tell it your situation* naturally — "I'm at LAX with 80 minutes," "what can I make with eggs and spinach," "I just had a Shake Shack burger for lunch."
+- It *looks at your context* — your calendar, your location, the time of day, the weather, what you've already eaten — using the same tools Clarity always had.
+- It *renders the decision* as an interactive panel: the pick, the reason, the macros, the alternates, the followups.
+- It *tracks what matters* when you want it to — running daily macros, hydration on travel days, sodium when you've been on the road.
 
-This is a direct evolution of GenUIne's core concept, with three major upgrades: Claude as the engine (replacing OpenAI), a significantly more polished UI, and voice input as a first-class interaction mode.
+The product stays conversational. It stays luxurious and calm. It adds a new spine: every response is a food/health decision, rendered visually, tied to real-world context.
 
-The experience should feel like texting a brilliant assistant who responds with beautifully designed cards instead of walls of text.
+The experience should feel like texting a quiet, careful coach who already knows your week.
 
 ---
 
@@ -48,10 +50,11 @@ The experience should feel like texting a brilliant assistant who responds with 
 
 | Persona | What They Ask | What They Get Back |
 |---|---|---|
-| **The News Junkie** | "What's happening in AI today?" | A visual news brief: headlines, sources, sentiment, key quotes — all in one card |
-| **The Busy Professional** | "Draft a reply to Sarah apologizing for the delay" | An editable email draft card with tone controls and a Send button |
-| **The Researcher** | "Compare the top 3 AI coding tools right now" | A live comparison table with features, pricing, and source links |
-| **The Planner** | "Do I have time for a 2-hour block this afternoon?" | A visual calendar card showing availability with one-click scheduling |
+| **The National Correspondent** | "I'm at LaGuardia with 80 minutes before my flight to London — plan my meals." | An `on-the-road` panel: best gate pick with macros, onboard hydration plan, first meal in London local time |
+| **The Home Cook Under Pressure** | "I've got eggs, half an onion, frozen spinach, and leftover rice." | A `fridge-scan` panel: 3 dinners in under 20 minutes, each with macros, prep time, and a step preview |
+| **The Real-Time Eater** | "What should I eat right now?" | A `meal-pick` panel: top recommendation tuned to time of day + calendar, two alternates, macros, brief reasoning |
+| **The Post-Meal Logger** | "I just had a Shake Shack burger and fries. What's dinner?" | A `nutrition-log` panel: meal logged, running totals vs targets, a specific dinner suggestion that balances the day |
+| **The Schedule-Aware Planner** | "Anything coming up the next few days I should eat around?" | A `calendar` panel with meal-timing callouts — back-to-back meetings, travel, late events |
 
 ---
 
@@ -64,9 +67,50 @@ Clarity's home screen is a clean, minimal chat interface — familiar enough to 
 - A persistent input bar at the bottom — supports typing or voice
 - Agent status shown inline as a subtle streaming indicator while Claude is thinking/browsing
 - Each response in the thread is either a plain Claude message OR a rendered UI panel
-- Suggested starter prompts on the empty state ("What's in the news today?", "Draft a reply to my most urgent email", "Research and compare...")
+- Suggested starter prompts on the empty state are health-first: "What should I eat right now?", "I have eggs, spinach, and leftover rice — what can I make?", "I'm flying LAX to Heathrow tonight — plan my meals.", "I just had a Shake Shack burger. What's dinner?"
 
-The UI should feel like a premium, opinionated evolution of the chat paradigm. Think: what if Perplexity and Linear built a chat interface together.
+The UI should feel like a premium, opinionated evolution of the chat paradigm. Think: what if a Michelin-trained chef, a sports nutritionist, and Linear's design team built a chat interface together.
+
+### 5.1a The Four Headline Panels (New)
+
+These are the panels that carry the pivot. Each has a strict data contract surfaced to Claude via the system prompt.
+
+**`meal-pick` — "What should I eat right now?"**
+- Single lead recommendation with a one-sentence *reason* tied to context (time of day, next calendar event, last meal, weather).
+- Estimated macros: calories, protein, carbs, fat. Fiber and sodium when relevant.
+- 1–3 alternates (name + macros + one-line reason) so the user feels they still have agency.
+- Optional `todayProgress` block that shows running totals vs targets when the session has logged earlier meals.
+
+**`fridge-scan` — "Here's what I have, what can I make?"**
+- Takes an ingredient list (and optional staples-on-hand hint).
+- Returns 2–3 recipes: name, prep minutes, difficulty, macros, 4–6 step preview, and a clearly-marked `missingIngredients` list so the user knows if they need to run out for soy sauce.
+- Tags for common needs: "high-protein", "one-pan", "no oven", "kid-friendly".
+
+**`nutrition-log` — "I just ate X. How's the day looking?"**
+- Logs the named meal with estimated macros and an optional "watch out for…" note (e.g., "high sodium — hydrate this afternoon").
+- Running `dayTotals` for calories/protein/carbs/fat/fiber/sodium shown as unobtrusive progress bars (no green/red stoplight; muted gold on warm surface).
+- A `nextMealSuggestion` block: one description ("light, fiber-rich dinner with lean protein") and 2–3 concrete example meals the user could choose.
+
+**`on-the-road` — The correspondent's killer panel**
+- Used for "I'm at [airport/city] with N minutes" or "I'm flying X to Y."
+- Three horizons on one card:
+  1. **Now:** best food pick at current location, macros, a note about what to ask the counter for.
+  2. **Onboard/transit:** hydration target (in liters), whether to skip the in-flight meal, snack advice.
+  3. **Arrival:** local time at destination, first-meal idea in destination time zone, with a "why" line.
+- Tied to the user's calendar/flight data when present; otherwise fills from the prompt's stated flight.
+
+### 5.1b Panels Carried Over (still useful in the pivoted product)
+
+- `calendar` — unchanged; used to reason about meal timing ("eat before your 3pm live hit, not after").
+- `email-draft`, `inbox` — unchanged; the correspondent persona still lives in email.
+- `weather-brief` — surfaces heat/hydration cues for outdoor events.
+- `comparison-table` — comparing restaurants, meal services, supplements.
+- `news-brief` — food/health research, new studies, product recalls.
+- `timeline-plan` — multi-day meal plans or itineraries with food built in.
+
+### 5.1c Panels Retired / De-emphasized
+
+- `stock-watch`, `globe` — remain registered so bundled demo seeds don't break, but are excluded from the new system-prompt examples and home-screen suggestions. They are legacy demos only.
 
 ### 5.2 Voice Input
 - Web Speech API — browser-native, no API key, completely free

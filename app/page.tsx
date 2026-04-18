@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Newspaper, Mail, BarChart3, CalendarClock, Globe } from "lucide-react";
+import { Utensils, Refrigerator, Plane, ClipboardList, CalendarClock } from "lucide-react";
 import { InputBar } from "@/components/chat/input-bar";
 import { AgentActivity } from "@/components/chat/agent-activity";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -17,6 +17,10 @@ import { GlobePanel } from "@/components/panels/globe-panel";
 import { StockWatchPanel } from "@/components/panels/stock-watch";
 import { WeatherBriefPanel } from "@/components/panels/weather-brief";
 import { TimelinePlanPanel } from "@/components/panels/timeline-plan";
+import { MealPickPanel } from "@/components/panels/meal-pick";
+import { FridgeScanPanel } from "@/components/panels/fridge-scan";
+import { NutritionLogPanel } from "@/components/panels/nutrition-log";
+import { OnTheRoadPanel } from "@/components/panels/on-the-road";
 import type { ChatSession, Exchange, PanelKind } from "@/lib/chat/sessions";
 import { useChatStore } from "@/lib/chat/store";
 import { useClarityChat } from "@/lib/hooks/use-chat";
@@ -34,14 +38,27 @@ const PANEL_MAP: Record<PanelKind, PanelComponent> = {
   "stock-watch": StockWatchPanel as PanelComponent,
   "weather-brief": WeatherBriefPanel as PanelComponent,
   "timeline-plan": TimelinePlanPanel as PanelComponent,
+  "meal-pick": MealPickPanel as PanelComponent,
+  "fridge-scan": FridgeScanPanel as PanelComponent,
+  "nutrition-log": NutritionLogPanel as PanelComponent,
+  "on-the-road": OnTheRoadPanel as PanelComponent,
 };
 
 const SUGGESTED = [
-  { icon: Newspaper, label: "What's in the news today?" },
-  { icon: Mail, label: "Draft a reply to my most urgent email" },
-  { icon: BarChart3, label: "Compare the top 3 AI coding tools" },
-  { icon: CalendarClock, label: "Do I have a 2 hour block this afternoon?" },
-  { icon: Globe, label: "Show global AI investment" },
+  { icon: Utensils, label: "What should I eat right now?" },
+  {
+    icon: Refrigerator,
+    label: "Eggs, spinach, leftover rice — what can I make in 20 minutes?",
+  },
+  {
+    icon: Plane,
+    label: "I'm flying LAX to Heathrow tonight — plan my meals.",
+  },
+  {
+    icon: ClipboardList,
+    label: "I just had a Shake Shack burger and fries. What's dinner?",
+  },
+  { icon: CalendarClock, label: "Anything on my calendar I should eat around?" },
 ];
 
 export default function Page() {
@@ -117,7 +134,7 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
           className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-foreground-muted"
           style={{ letterSpacing: "0.2em" }}
         >
-          The Internet, Rendered for You
+          Healthy in Real Life · Real Time
         </div>
       </header>
 
@@ -128,24 +145,25 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
               className="font-mono text-[0.7rem] uppercase tracking-[0.24em] text-foreground-muted"
               style={{ letterSpacing: "0.24em" }}
             >
-              ⌘ Clarity · v0.1
+              ⌘ Clarity · v0.2
             </div>
             <h1
               className="font-serif text-[3.25rem] md:text-[4.5rem] leading-[1.03] text-foreground m-0"
               style={{ letterSpacing: "-0.035em", fontWeight: 300 }}
             >
-              Don't browse the internet.
+              Healthy isn't a plan.
               <br />
               <span className="italic text-foreground-muted">
-                Have Clarity bring it to you.
+                It's a real-time decision.
               </span>
             </h1>
             <p
-              className="text-foreground-muted max-w-md mt-2"
+              className="text-foreground-muted max-w-xl mt-2"
               style={{ lineHeight: 1.6 }}
             >
-              Ask anything. Clarity browses, reads, and composes for you — then
-              renders the answer as a living, interactive panel.
+              Tell Clarity your situation — what you have, where you are, what's
+              next. It checks your calendar, runs the macros, and hands back one
+              specific, smart move. Not a paragraph. A panel.
             </p>
           </div>
 
@@ -338,11 +356,11 @@ function EmptyChatHint({ title }: { title: string }) {
         className="font-serif text-[2rem] leading-tight text-foreground m-0"
         style={{ letterSpacing: "-0.02em" }}
       >
-        What would you like Clarity to find for you?
+        What are you eating next?
       </h2>
       <p className="text-foreground-muted leading-relaxed">
-        Type a prompt below. For now, Clarity responds in plain prose — panels
-        light up as we wire in each tool.
+        Tell Clarity your situation — fridge contents, current location, last
+        meal, flight ahead. It'll hand you the specific next move.
       </p>
     </div>
   );

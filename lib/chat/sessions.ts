@@ -7,7 +7,11 @@ export type PanelKind =
   | "globe"
   | "stock-watch"
   | "weather-brief"
-  | "timeline-plan";
+  | "timeline-plan"
+  | "meal-pick"
+  | "fridge-scan"
+  | "nutrition-log"
+  | "on-the-road";
 
 export type ExchangeStatus = "pending" | "streaming" | "complete" | "error";
 
@@ -119,51 +123,69 @@ export const SEED_SESSIONS: ChatSession[] = [
     ],
   },
   {
-    id: "travel",
-    title: "Tokyo trip planning",
-    subtitle: "Yesterday",
+    id: "correspondent-tuesday",
+    title: "A Tuesday on the road",
+    subtitle: "Today · correspondent mode",
     seeded: true,
     exchanges: [
       {
-        id: "ex-weather",
-        prompt: "What's the weather in Tokyo this week?",
-        gist: "Tokyo · 7-day forecast",
-        panelKind: "weather-brief",
+        id: "ex-on-the-road",
+        prompt:
+          "I'm at LaGuardia with 80 minutes before my flight to London — plan my meals.",
+        gist: "LGA → LHR · travel-day plan",
+        panelKind: "on-the-road",
         activity: [
-          { tool: "exa.search", detail: "weather.com Tokyo 7-day" },
-          { tool: "stagehand.extract", detail: "forecast table" },
+          { tool: "calendar.today", detail: "flight LGA→LHR 8:45pm" },
+          { tool: "nutrition.estimate", detail: "Cava bowl · 510 kcal" },
+          { tool: "claude.synthesize", detail: "airport → plane → London AM" },
         ],
-        timestamp: "Yesterday · 6:14 PM",
+        timestamp: "Today · 7:25 PM",
       },
       {
-        id: "ex-timeline",
-        prompt: "Build me a 4-day itinerary focused on architecture.",
-        gist: "4-day architecture itinerary",
-        panelKind: "timeline-plan",
+        id: "ex-nutrition-log",
+        prompt: "I just had a Shake Shack burger and fries. What's dinner?",
+        gist: "Logged · balancing dinner",
+        panelKind: "nutrition-log",
         activity: [
-          { tool: "exa.search", detail: '"tokyo architecture tour"' },
-          { tool: "claude.plan", detail: "sequenced 14 stops by neighborhood" },
+          {
+            tool: "nutrition.estimate",
+            detail: "SmokeShack + regular fries · 1040 kcal",
+          },
+          { tool: "claude.balance", detail: "targets vs day-so-far" },
         ],
-        timestamp: "Yesterday · 6:22 PM",
+        timestamp: "Today · 1:17 PM",
+      },
+      {
+        id: "ex-fridge-scan",
+        prompt:
+          "I've got eggs, leftover rice, half an onion, frozen spinach. Dinner in 20?",
+        gist: "Fridge scan · 3 dinners",
+        panelKind: "fridge-scan",
+        activity: [
+          { tool: "claude.plan", detail: "3 recipes · staples assumed" },
+          { tool: "nutrition.estimate", detail: "macros per recipe" },
+        ],
+        timestamp: "Fri · 9:02 PM",
       },
     ],
   },
   {
-    id: "markets",
-    title: "Market snapshot",
-    subtitle: "Apr 16",
+    id: "real-time-meal",
+    title: "What should I eat right now?",
+    subtitle: "Today · meal decision",
     seeded: true,
     exchanges: [
       {
-        id: "ex-stocks",
-        prompt: "How are NVDA, AAPL, and TQQQ doing today?",
-        gist: "NVDA · AAPL · TQQQ",
-        panelKind: "stock-watch",
+        id: "ex-meal-pick",
+        prompt: "What should I eat right now?",
+        gist: "Midtown · back-to-back calls",
+        panelKind: "meal-pick",
         activity: [
-          { tool: "exa.search", detail: "real-time quotes · 3 tickers" },
-          { tool: "stagehand.browse", detail: "finance.yahoo.com" },
+          { tool: "calendar.today", detail: "calls 2pm, 3pm, 5:30pm" },
+          { tool: "nutrition.estimate", detail: "poke bowl · 560 kcal" },
+          { tool: "claude.recommend", detail: "protein + slow carbs" },
         ],
-        timestamp: "Apr 16 · 3:54 PM",
+        timestamp: "Today · 1:42 PM",
       },
     ],
   },
