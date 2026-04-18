@@ -16,7 +16,9 @@ import { GlobePanel } from "@/components/panels/globe-panel";
 import { StockWatchPanel } from "@/components/panels/stock-watch";
 import { WeatherBriefPanel } from "@/components/panels/weather-brief";
 import { TimelinePlanPanel } from "@/components/panels/timeline-plan";
-import { SEED_SESSIONS, type PanelKind } from "@/lib/chat/sessions";
+import type { ChatSession, Exchange, PanelKind } from "@/lib/chat/sessions";
+import { useChatStore } from "@/lib/chat/store";
+import { useClarityChat } from "@/lib/hooks/use-chat";
 import { cn } from "@/lib/utils";
 
 const PANEL_MAP: Record<PanelKind, React.ComponentType> = {
@@ -41,31 +43,41 @@ const SUGGESTED = [
 export default function Page() {
   const [view, setView] = useState<"home" | "chat">("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string>(
-    SEED_SESSIONS[0].id,
-  );
   const [listening, setListening] = useState(false);
 
+  const sessions = useChatStore((s) => s.sessions);
+  const activeId = useChatStore((s) => s.activeId);
+  const setActive = useChatStore((s) => s.setActive);
+  const createSession = useChatStore((s) => s.createSession);
+
   const activeSession = useMemo(
-    () => SEED_SESSIONS.find((s) => s.id === activeSessionId)!,
-    [activeSessionId],
+    () => sessions.find((s) => s.id === activeId) ?? sessions[0],
+    [sessions, activeId],
   );
 
-  const handleNew = () => setView("home");
+  const { send, pending } = useClarityChat();
+
+  const handleNew = () => {
+    setView("home");
+  };
+
   const handleSelect = (id: string) => {
-    setActiveSessionId(id);
+    setActive(id);
     setView("chat");
   };
-  const handlePrompt = () => {
+
+  const handlePromptFromHome = async (prompt: string) => {
+    // Each prompt from home starts a fresh live session.
+    createSession();
     setView("chat");
-    setActiveSessionId(SEED_SESSIONS[0].id);
+    await send(prompt);
   };
 
   return (
     <div className="flex min-h-dvh">
       <ChatSidebar
-        sessions={SEED_SESSIONS}
-        activeId={activeSessionId}
+        sessions={sessions}
+        activeId={activeSession.id}
         onSelect={handleSelect}
         onNew={handleNew}
         collapsed={sidebarCollapsed}
@@ -75,14 +87,16 @@ export default function Page() {
       <main className="flex-1 min-w-0 flex flex-col">
         {view === "home" ? (
           <HomeView
-            onPrompt={handlePrompt}
+            onPrompt={handlePromptFromHome}
             listening={listening}
             onToggleMic={() => setListening((v) => !v)}
           />
         ) : (
           <ChatView
-            key={activeSessionId}
+            key={activeSession.id}
             session={activeSession}
+            pending={pending}
+            onSubmit={send}
             listening={listening}
             onToggleMic={() => setListening((v) => !v)}
           />
@@ -185,16 +199,21 @@ function HomeView({
 
 function ChatView({
   session,
+  pending,
+  onSubmit,
   listening,
   onToggleMic,
 }: {
-  session: (typeof SEED_SESSIONS)[number];
+  session: ChatSession;
+  pending: boolean;
+  onSubmit: (prompt: string) => Promise<void>;
   listening: boolean;
   onToggleMic: () => void;
 }) {
   const [activeExchange, setActiveExchange] = useState(0);
   const exchangeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastExchangeCountRef = useRef<number>(session.exchanges.length);
 
   // Observe which exchange is in view
   useEffect(() => {
@@ -204,9 +223,7 @@ function ChatView({
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort(
-            (a, b) => b.intersectionRatio - a.intersectionRatio,
-          );
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
         if (visible[0]) {
           const idx = refs.findIndex((r) => r === visible[0].target);
           if (idx !== -1) setActiveExchange(idx);
@@ -216,11 +233,28 @@ function ChatView({
     );
     refs.forEach((r) => observer.observe(r));
     return () => observer.disconnect();
-  }, [session.id]);
+  }, [session.id, session.exchanges.length]);
+
+  // Auto-scroll to the newest exchange whenever a new one appends.
+  useEffect(() => {
+    const n = session.exchanges.length;
+    if (n > lastExchangeCountRef.current) {
+      exchangeRefs.current[n - 1]?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+    lastExchangeCountRef.current = n;
+  }, [session.exchanges.length]);
 
   const scrollToExchange = (i: number) => {
-    exchangeRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    exchangeRefs.current[i]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
+
+  const isEmpty = session.exchanges.length === 0;
 
   return (
     <>
@@ -245,43 +279,47 @@ function ChatView({
               {session.subtitle}
             </span>
             <span className="font-mono text-[0.65rem] tabular-nums text-foreground-muted">
-              {session.exchanges.length} turns
+              {session.exchanges.length} turn
+              {session.exchanges.length === 1 ? "" : "s"}
             </span>
           </div>
         </div>
       </header>
 
       {/* Scrollable canvas */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="px-8 lg:px-12 py-10 flex flex-col gap-16 pb-40 max-w-[84rem] mx-auto">
-          {session.exchanges.map((ex, i) => (
-            <div
-              key={ex.id}
-              ref={(el) => {
-                exchangeRefs.current[i] = el;
-              }}
-              data-active={i === activeExchange}
-              className={cn(
-                "opacity-0 animate-[msg-in_360ms_cubic-bezier(0.25,0.1,0.25,1)_forwards] transition-opacity duration-500",
-                i !== activeExchange && "opacity-60 hover:opacity-100",
-              )}
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <ExchangeBlock index={i} exchange={ex} />
-            </div>
-          ))}
+          {isEmpty ? (
+            <EmptyChatHint title={session.title} />
+          ) : (
+            session.exchanges.map((ex, i) => (
+              <div
+                key={ex.id}
+                ref={(el) => {
+                  exchangeRefs.current[i] = el;
+                }}
+                data-active={i === activeExchange}
+                className={cn(
+                  "opacity-0 animate-[msg-in_360ms_cubic-bezier(0.25,0.1,0.25,1)_forwards] transition-opacity duration-500",
+                  i !== activeExchange && "opacity-60 hover:opacity-100",
+                )}
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <ExchangeBlock index={i} exchange={ex} />
+              </div>
+            ))
+          )}
         </div>
       </div>
 
       {/* Dot nav */}
-      <DotNav
-        exchanges={session.exchanges}
-        activeIndex={activeExchange}
-        onSelect={scrollToExchange}
-      />
+      {session.exchanges.length > 0 && (
+        <DotNav
+          exchanges={session.exchanges}
+          activeIndex={activeExchange}
+          onSelect={scrollToExchange}
+        />
+      )}
 
       {/* Sticky input */}
       <div className="sticky bottom-0 z-20 bg-background border-t border-border/60 pt-5">
@@ -289,7 +327,16 @@ function ChatView({
           <InputBar
             listening={listening}
             onToggleMic={onToggleMic}
-            placeholder="Ask a follow-up…"
+            placeholder={
+              isEmpty
+                ? "Ask Clarity anything…"
+                : pending
+                  ? "Clarity is writing…"
+                  : "Ask a follow-up…"
+            }
+            onSubmit={(text) => {
+              void onSubmit(text);
+            }}
           />
         </div>
       </div>
@@ -297,14 +344,32 @@ function ChatView({
   );
 }
 
-function ExchangeBlock({
-  index,
-  exchange,
-}: {
-  index: number;
-  exchange: (typeof SEED_SESSIONS)[number]["exchanges"][number];
-}) {
-  const Panel = PANEL_MAP[exchange.panelKind];
+function EmptyChatHint({ title }: { title: string }) {
+  return (
+    <div className="flex flex-col items-start gap-3 py-16 max-w-[60ch]">
+      <div
+        className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-foreground-muted"
+        style={{ letterSpacing: "0.14em" }}
+      >
+        {title}
+      </div>
+      <h2
+        className="font-serif text-[2rem] leading-tight text-foreground m-0"
+        style={{ letterSpacing: "-0.02em" }}
+      >
+        What would you like Clarity to find for you?
+      </h2>
+      <p className="text-foreground-muted leading-relaxed">
+        Type a prompt below. For now, Clarity responds in plain prose — panels
+        light up as we wire in each tool.
+      </p>
+    </div>
+  );
+}
+
+function ExchangeBlock({ index, exchange }: { index: number; exchange: Exchange }) {
+  const Panel = exchange.panelKind ? PANEL_MAP[exchange.panelKind] : null;
+
   return (
     <section className="flex flex-col gap-6">
       {/* Prompt header */}
@@ -332,15 +397,61 @@ function ExchangeBlock({
         {exchange.prompt}
       </h2>
 
-      {/* Agent activity */}
-      <div className="pl-0">
+      {/* Agent activity (seed sessions) */}
+      {exchange.activity && exchange.activity.length > 0 && (
         <AgentActivity lines={exchange.activity} />
-      </div>
+      )}
 
-      {/* Panel */}
-      <div className="mt-2 opacity-0 translate-y-2 animate-[panel-in_420ms_cubic-bezier(0.25,0.1,0.25,1)_120ms_forwards]">
-        <Panel />
-      </div>
+      {/* Live status */}
+      {!Panel && exchange.status === "streaming" && !exchange.text && (
+        <StreamingHint />
+      )}
+
+      {/* Text body (live streaming) */}
+      {!Panel && exchange.text && (
+        <div
+          className={cn(
+            "text-foreground leading-[1.7] text-[1.05rem] whitespace-pre-wrap",
+            exchange.status === "error" && "text-red-400",
+          )}
+          style={{ maxWidth: "72ch" }}
+        >
+          {exchange.text}
+          {exchange.status === "streaming" && <Caret />}
+        </div>
+      )}
+
+      {/* Panel (seed sessions) */}
+      {Panel && (
+        <div className="mt-2 opacity-0 translate-y-2 animate-[panel-in_420ms_cubic-bezier(0.25,0.1,0.25,1)_120ms_forwards]">
+          <Panel />
+        </div>
+      )}
     </section>
+  );
+}
+
+function StreamingHint() {
+  return (
+    <div
+      className="font-mono text-[0.75rem] italic text-foreground-muted flex items-center gap-2"
+      aria-live="polite"
+    >
+      <span
+        className="h-1.5 w-1.5 rounded-full bg-primary"
+        style={{ animation: "pulse 1.4s ease-in-out infinite" }}
+      />
+      claude.haiku · composing…
+    </div>
+  );
+}
+
+function Caret() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block align-[-0.15em] ml-0.5 h-[1em] w-[0.5ch] bg-primary/80"
+      style={{ animation: "pulse 1s ease-in-out infinite" }}
+    />
   );
 }

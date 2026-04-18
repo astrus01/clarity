@@ -8,20 +8,30 @@ export type PanelKind =
   | "weather-brief"
   | "timeline-plan";
 
+export type ExchangeStatus = "pending" | "streaming" | "complete" | "error";
+
 export type Exchange = {
   id: string;
   prompt: string;
-  gist: string; // AI-generated short label
-  panelKind: PanelKind;
-  activity: { tool: string; detail: string }[];
-  timestamp: string; // relative, e.g. "8:42 AM"
+  gist: string;
+  timestamp: string;
+
+  // Seed/panel-driven exchanges
+  panelKind?: PanelKind;
+  activity?: { tool: string; detail: string }[];
+
+  // Live text streaming
+  text?: string;
+  status?: ExchangeStatus;
 };
 
 export type ChatSession = {
   id: string;
   title: string;
-  subtitle: string; // e.g., "Today, 9:02 AM" or "Yesterday"
+  subtitle: string;
   exchanges: Exchange[];
+  /** True for the bundled demo sessions; false for runtime-created chats. */
+  seeded?: boolean;
 };
 
 export const SEED_SESSIONS: ChatSession[] = [
@@ -29,6 +39,7 @@ export const SEED_SESSIONS: ChatSession[] = [
     id: "morning-brief",
     title: "A morning with Clarity",
     subtitle: "Today · 8:42 AM",
+    seeded: true,
     exchanges: [
       {
         id: "ex-news",
@@ -71,6 +82,7 @@ export const SEED_SESSIONS: ChatSession[] = [
     id: "coding-tools",
     title: "Research: AI coding tools",
     subtitle: "Today · 11:03 AM",
+    seeded: true,
     exchanges: [
       {
         id: "ex-compare",
@@ -104,6 +116,7 @@ export const SEED_SESSIONS: ChatSession[] = [
     id: "travel",
     title: "Tokyo trip planning",
     subtitle: "Yesterday",
+    seeded: true,
     exchanges: [
       {
         id: "ex-weather",
@@ -133,6 +146,7 @@ export const SEED_SESSIONS: ChatSession[] = [
     id: "markets",
     title: "Market snapshot",
     subtitle: "Apr 16",
+    seeded: true,
     exchanges: [
       {
         id: "ex-stocks",
