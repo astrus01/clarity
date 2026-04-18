@@ -88,7 +88,6 @@ export async function POST(req: NextRequest) {
           if (toolUses.length === 0) {
             // Final turn — model is done.
             emit({ type: "done" });
-            controller.close();
             return;
           }
 
@@ -140,7 +139,6 @@ export async function POST(req: NextRequest) {
             // Defensive — some SDK versions may return end_turn alongside tool_use.
             if (panelEmitted || texts.trim()) {
               emit({ type: "done" });
-              controller.close();
               return;
             }
           }
@@ -150,10 +148,18 @@ export async function POST(req: NextRequest) {
         emit({ type: "done" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "unknown error";
-        emit({ type: "error", message: msg });
-        emit({ type: "done" });
+        try {
+          emit({ type: "error", message: msg });
+          emit({ type: "done" });
+        } catch {
+          // controller already closed
+        }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // already closed — safe to ignore
+        }
       }
     },
   });
