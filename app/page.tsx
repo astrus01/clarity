@@ -162,20 +162,35 @@ function HomeView({ onPrompt }: { onPrompt: (p: string) => void }) {
               className="font-serif text-[3.25rem] md:text-[4.5rem] leading-[1.03] text-foreground m-0"
               style={{ letterSpacing: "-0.035em", fontWeight: 300 }}
             >
-              Ask anything.
+              The Internet,
               <br />
               <span className="italic text-foreground-muted">
-                Get a panel, not a paragraph.
+                Rendered for You.
               </span>
             </h1>
             <p
               className="text-foreground-muted max-w-xl mt-2"
               style={{ lineHeight: 1.6 }}
             >
-              News, research, email, calendar, weather, comparisons, travel,
-              real-time food decisions — every answer comes back as an
-              interactive panel you can scan in seconds.
+              Clarity browses the web autonomously, reads and drafts your
+              Gmail, checks your calendar, and plans your day — then hands
+              back an interactive panel instead of another wall of text.
             </p>
+
+            <div
+              className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[0.62rem] uppercase text-foreground-muted pt-1"
+              style={{ letterSpacing: "0.18em" }}
+            >
+              <span>Exa + Stagehand browsing</span>
+              <span className="text-border">·</span>
+              <span>Gmail read &amp; send</span>
+              <span className="text-border">·</span>
+              <span>Calendar</span>
+              <span className="text-border">·</span>
+              <span>Weather</span>
+              <span className="text-border">·</span>
+              <span>Real-time food</span>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
