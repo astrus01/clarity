@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
       ];
 
       try {
+        let panelEverEmitted = false;
+        let lastTurnTexts = "";
+
         for (let turn = 0; turn < MAX_LOOP_TURNS; turn++) {
           const response = await client.messages.create({
             model: MODEL,
@@ -84,9 +87,53 @@ export async function POST(req: NextRequest) {
 
           // Stream the text portion of this turn if present.
           if (texts.trim()) emit({ type: "text", text: texts });
+          lastTurnTexts = texts;
 
           if (toolUses.length === 0) {
-            // Final turn — model is done.
+            // Model ended without calling a tool. If we never rendered a panel
+            // AND the final text looks like a real answer (not a greeting),
+            // coerce one more turn with tool_choice locked to render_panel.
+            if (!panelEverEmitted && texts.trim().length > 40) {
+              messages.push({
+                role: "assistant",
+                content: blocks as AssistantBlock[],
+              });
+              messages.push({
+                role: "user",
+                content:
+                  "Render that answer as a render_panel call now. Pick the best-fit kind — news-brief for research/knowledge answers. Do not reply with prose.",
+              });
+
+              const forced = await client.messages.create({
+                model: MODEL,
+                max_tokens: 1600,
+                system: CLARITY_SYSTEM_PROMPT,
+                tools: TOOLS,
+                tool_choice: { type: "tool", name: "render_panel" },
+                messages,
+              });
+
+              const fBlocks = forced.content as ContentBlock[];
+              const fTools = fBlocks.filter(
+                (b): b is ToolUseBlock => b.type === "tool_use",
+              );
+              for (const tu of fTools) {
+                emit({
+                  type: "activity",
+                  tool: tu.name,
+                  detail: shortDetailFor(tu.name, tu.input),
+                });
+                const result = await dispatchTool(tu.name, tu.input);
+                if (result.kind === "panel") {
+                  emit({
+                    type: "panel",
+                    panelKind: result.panelKind,
+                    panelData: result.panelData,
+                  });
+                  panelEverEmitted = true;
+                }
+              }
+            }
             emit({ type: "done" });
             return;
           }
@@ -117,6 +164,7 @@ export async function POST(req: NextRequest) {
                 panelData: result.panelData,
               });
               panelEmitted = true;
+              panelEverEmitted = true;
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: tu.id,
@@ -144,7 +192,40 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        emit({ type: "error", message: "Max tool-loop turns reached." });
+        // Loop ran out without a terminal render_panel — force one last panel.
+        if (!panelEverEmitted && lastTurnTexts.trim().length > 0) {
+          try {
+            messages.push({
+              role: "user",
+              content:
+                "Render that as a render_panel call now — pick the best-fit kind. Do not reply with prose.",
+            });
+            const forced = await client.messages.create({
+              model: MODEL,
+              max_tokens: 1600,
+              system: CLARITY_SYSTEM_PROMPT,
+              tools: TOOLS,
+              tool_choice: { type: "tool", name: "render_panel" },
+              messages,
+            });
+            const fBlocks = forced.content as ContentBlock[];
+            for (const tu of fBlocks.filter(
+              (b): b is ToolUseBlock => b.type === "tool_use",
+            )) {
+              const result = await dispatchTool(tu.name, tu.input);
+              if (result.kind === "panel") {
+                emit({
+                  type: "panel",
+                  panelKind: result.panelKind,
+                  panelData: result.panelData,
+                });
+              }
+            }
+          } catch {
+            // fall through
+          }
+        }
+
         emit({ type: "done" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "unknown error";
